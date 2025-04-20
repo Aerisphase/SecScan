@@ -1,36 +1,35 @@
-from typing import Dict, List  # Добавьте этот импорт в самом начале файла
+from typing import List, Dict
 
 class XSSScanner:
     def __init__(self, session):
         self.session = session
-        self.payloads = [
+
+    def scan(self, url: str, params: Dict = None) -> List[Dict]:
+        """Сканирование на XSS-уязвимости"""
+        if params is None:
+            params = {'q': 'test'}  # Параметры по умолчанию
+            
+        payloads = [
             "<script>alert(1)</script>",
-            "\"><script>alert(1)</script>",
-            "javascript:alert(1)",
-            "'><img src=x onerror=alert(1)>",
-            "${alert(1)}"
+            "\"><script>alert(1)</script>"
         ]
-
-    def scan_form(self, form: Dict) -> Dict:
-        """
-        Сканирование формы на XSS-уязвимости
-        """
-        results = {
-            'vulnerable': False,
-            'payloads': []
-        }
+        results = []
         
-        # Здесь будет реализация проверки формы
-        return results
-
-    def scan_url(self, url: str) -> Dict:
-        """
-        Сканирование URL на Reflected XSS
-        """
-        results = {
-            'vulnerable': False,
-            'payloads': []
-        }
-        
-        # Здесь будет реализация проверки URL
+        for param, value in params.items():
+            for payload in payloads:
+                try:
+                    test_params = params.copy()
+                    test_params[param] = payload
+                    response = self.session.get(url, params=test_params)
+                    
+                    if payload in response.text:
+                        results.append({
+                            'type': 'XSS',
+                            'url': response.url,
+                            'param': param,
+                            'payload': payload,
+                            'confidence': 0.8
+                        })
+                except Exception:
+                    continue
         return results

@@ -1,0 +1,17 @@
+2025-04-21 01:58:23,156 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
+2025-04-21 01:58:24,538 - VulnScanner.Crawler - INFO - Found robots.txt at https://www.hackthissite.org/robots.txt
+2025-04-21 01:58:24,538 - VulnScanner.Crawler - INFO - Crawling: https://www.hackthissite.org/
+2025-04-21 01:58:26,104 - VulnScanner.Crawler - ERROR - Error crawling https://www.hackthissite.org/: 'AdvancedCrawler' object has no attribute '_extract_links'
+Traceback (most recent call last):
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 115, in crawl
+    new_links = self._extract_links(html, current_url)
+                ^^^^^^^^^^^^^^^^^^^
+AttributeError: 'AdvancedCrawler' object has no attribute '_extract_links'
+2025-04-21 01:58:26,108 - VulnScanner.Crawler - INFO - Crawling completed. Stats: {'pages_crawled': 1, 'links_found': 0, 'forms_found': 0, 'api_endpoints': 0}
+2025-04-21 01:58:26,108 - Main - INFO - Crawling completed. Pages: 1
+2025-04-21 01:58:26,108 - Main - ERROR - Scanner failed on https://www.hackthissite.org/: SQLiScanner.scan() missing 1 required positional argument: 'params'
+2025-04-21 01:58:26,108 - Main - ERROR - Scanner failed on https://www.hackthissite.org/: 'XSSScanner' object has no attribute 'scan'
+2025-04-21 01:58:26,109 - Main - INFO - Found 0 potential vulnerabilities
+2025-04-21 02:04:51,244 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
+2025-04-21 02:05:31,127 - Main - INFO - Crawling completed. Pages: 20
+2025-04-21 02:06:15,047 - Main - INFO - Found 0 potential vulnerabilities
