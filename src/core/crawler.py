@@ -27,6 +27,12 @@ class AdvancedCrawler:
         self.queue = []  # Очередь URL для сканирования
         self.session = self._configure_session(user_agent, verify_ssl)  # HTTP-сессия
         self.logger = logging.getLogger('VulnScanner.Crawler')  # Логгер
+
+        def _extract_links(self, html, base_url):
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+            links = [a.get('href') for a in soup.find_all('a', href=True)]
+            return [self._normalize_url(link, base_url) for link in links]
         
         # Парсинг базового URL
         parsed = urlparse(base_url)
@@ -180,7 +186,7 @@ class AdvancedCrawler:
                 continue
                 
             try:
-                self.logger.info(f"Сканирование: {current_url}")
+                self.logger.info(f"Scanning: {current_url}")
                 time.sleep(self.delay)  # Задержка между запросами
                 
                 # Выполнение HTTP-запроса
@@ -237,3 +243,17 @@ class AdvancedCrawler:
     def stats(self) -> Dict[str, int]:
         """Получение статистики сканирования"""
         return self._stats.copy()
+    
+def crawl(self):
+    results = {
+        'stats': {'pages_crawled': 0, 'links_found': 0},
+        'vulnerabilities': []
+    }
+    
+    for page in self.pages_to_crawl:
+        # ... процесс сканирования ...
+        vulns = self.scanners['xss'].scan(page.url, page.forms)
+        results['vulnerabilities'].extend(vulns)
+        results['stats']['pages_crawled'] += 1
+    
+    return results

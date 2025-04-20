@@ -15,3 +15,43 @@ AttributeError: 'AdvancedCrawler' object has no attribute '_extract_links'
 2025-04-21 02:04:51,244 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
 2025-04-21 02:05:31,127 - Main - INFO - Crawling completed. Pages: 20
 2025-04-21 02:06:15,047 - Main - INFO - Found 0 potential vulnerabilities
+2025-04-21 02:14:37,709 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
+2025-04-21 02:15:10,575 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /missions/realistic/
+2025-04-21 02:15:20,075 - Main - INFO - Crawling completed. Pages: 20
+2025-04-21 02:16:05,089 - Main - INFO - Found 0 potential vulnerabilities
+2025-04-21 02:20:57,741 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
+2025-04-21 02:21:37,397 - Main - INFO - Crawling completed. Pages: 20
+2025-04-21 02:21:37,397 - Main - ERROR - Critical error: SQLiScanner.__init__() takes 1 positional argument but 2 were given
+Traceback (most recent call last):
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 54, in main
+    SQLiScanner(crawler.session),
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: SQLiScanner.__init__() takes 1 positional argument but 2 were given
+2025-04-21 02:25:20,583 - Main - INFO - Starting scan for https://example.com (mode: fast)
+2025-04-21 02:25:22,620 - Main - INFO - Crawling completed. Pages: 1
+2025-04-21 02:25:22,620 - Main - ERROR - Critical error: SQLiScanner.__init__() takes 1 positional argument but 2 were given
+Traceback (most recent call last):
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 54, in main
+    SQLiScanner(crawler.session),
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+TypeError: SQLiScanner.__init__() takes 1 positional argument but 2 were given
+2025-04-21 02:31:30,637 - Main - INFO - Starting scan for https://example.com (mode: fast)
+2025-04-21 02:31:31,703 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
+Traceback (most recent call last):
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
+    crawl_data = crawler.crawl()
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
+    while self.queue and len(self.visited_urls) < self.max_pages:
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: '<' not supported between instances of 'int' and 'dict'
+2025-04-21 02:31:31,706 - Reporter - ERROR - No results to display
+2025-04-21 02:32:33,340 - Main - INFO - Starting scan for https://example.com (mode: fast)
+2025-04-21 02:32:34,137 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
+Traceback (most recent call last):
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
+    crawl_data = crawler.crawl()
+  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
+    while self.queue and len(self.visited_urls) < self.max_pages:
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: '<' not supported between instances of 'int' and 'dict'
+2025-04-21 02:32:34,140 - Reporter - ERROR - No results to display

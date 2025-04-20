@@ -33,3 +33,27 @@ class XSSScanner:
                 except Exception:
                     continue
         return results
+    
+def scan(self, url, form_data=None):
+    vulnerabilities = []
+    
+    payloads = [
+        "<script>alert(1)</script>",
+        "'\"><img src=x onerror=alert(1)>"
+    ]
+    
+    for payload in payloads:
+        try:
+            response = requests.post(url, data={**form_data, 'field': payload})
+            if payload in response.text:
+                vulnerabilities.append({
+                    'type': 'XSS',
+                    'url': url,
+                    'payload': payload,
+                    'evidence': 'Payload reflected in response',
+                    'severity': 'high'
+                })
+        except Exception as e:
+            logger.error(f"XSS scan error for {url}: {str(e)}")
+    
+    return vulnerabilities
