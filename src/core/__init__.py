@@ -1,30 +1,23 @@
-"""
-Инициализация модуля ядра сканера уязвимостей
-"""
+from __future__ import annotations  # Должен быть ПЕРВОЙ строкой в файле
 
-from .crawler import AdvancedCrawler
-from .scanners.sqli import SQLiScanner
-from .scanners.xss import XSSScanner
-from .scanners.csrf import CSRFScanner
-from .scanners.rce import RCEScanner
-from .utils import normalize_url, is_same_domain
+from typing import Dict, List, Set
+from requests import Session
 
-# Версия ядра
-__version__ = "1.0.0"
+try:
+    from .crawler import AdvancedCrawler
+    from .scanners.xss import XSSScanner
+    from .scanners.sqli import SQLiScanner
+    from .scanners.csrf import CSRFScanner
+except ImportError as e:
+    raise ImportError(f"Failed to import core modules: {e}") from e
 
-# Экспортируемые публичные интерфейсы
 __all__ = [
     'AdvancedCrawler',
-    'SQLiScanner',
     'XSSScanner',
-    'CSRFScanner',
-    'RCEScanner',
-    'normalize_url',
-    'is_same_domain',
-    '__version__'
+    'SQLiScanner',
+    'CSRFScanner'
 ]
 
-class CoreConfig:
-    """Конфигурация ядра по умолчанию"""
-    MAX_CRAWL_DEPTH = 5
-    REQUEST_TIMEOUT = 10
+class CoreError(Exception):
+    """Базовое исключение для ошибок ядра"""
+    pass
