@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 import sys
 import io
 import argparse
 import logging
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 from core.crawler import AdvancedCrawler
 from core.scanners import SQLiScanner, XSSScanner
 
@@ -34,10 +33,8 @@ def parse_args():
     parser.add_argument('--max-pages', type=int, default=20,
                       help='Maximum pages to crawl')
     parser.add_argument('--user-agent', 
-                      default='SecScan/1.0 (+Mozilla/5.0)',
+                      default='SecScan/1.0 (+https://github.com/Aerisphase/SecScan)',
                       help='Custom User-Agent string')
-    parser.add_argument('--output', choices=['console', 'json', 'html'], 
-                      default='console', help='Output format')
     return parser.parse_args()
 
 def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
@@ -45,7 +42,16 @@ def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
     logger = logging.getLogger('Scanner')
     
     try:
-        crawler = AdvancedCrawler(target_url, config)
+        # Гарантируем правильные типы в конфиге
+        validated_config = {
+            'max_pages': int(config.get('max_pages', 20)),
+            'delay': float(config.get('delay', 1.0)),
+            'user_agent': str(config.get('user_agent', '')),
+            'scan_type': str(config.get('scan_type', 'fast'))
+        }
+
+        logger.debug(f"Using config: {validated_config}")
+        crawler = AdvancedCrawler(target_url, validated_config)
         crawl_data = crawler.crawl()
         
         if not crawl_data:

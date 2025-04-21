@@ -34,26 +34,38 @@ class XSSScanner:
                     continue
         return results
     
-def scan(self, url, form_data=None):
+def scan(self, url: str, forms: List[Dict]) -> List[Dict]:
     vulnerabilities = []
     
-    payloads = [
-        "<script>alert(1)</script>",
-        "'\"><img src=x onerror=alert(1)>"
-    ]
-    
-    for payload in payloads:
+    for form in forms:
         try:
-            response = requests.post(url, data={**form_data, 'field': payload})
-            if payload in response.text:
-                vulnerabilities.append({
-                    'type': 'XSS',
-                    'url': url,
-                    'payload': payload,
-                    'evidence': 'Payload reflected in response',
-                    'severity': 'high'
-                })
+            # Проверяем что form - словарь
+            if not isinstance(form, dict):
+                continue
+                
+            # Основная логика сканирования
+            for payload in self.payloads:
+                test_data = form.get('data', {}).copy()
+                for field in form.get('inputs', []):
+                    test_data[field] = payload
+                
+                response = self.session.post(
+                    form.get('action', url),
+                    data=test_data,
+                    timeout=5,
+                    verify=False
+                )
+                
+                if payload in response.text:
+                    vulnerabilities.append({
+                        'type': 'XSS',
+                        'url': url,
+                        'form_action': form.get('action'),
+                        'payload': payload,
+                        'evidence': 'Payload reflected in response',
+                        'severity': 'high'
+                    })
         except Exception as e:
-            logger.error(f"XSS scan error for {url}: {str(e)}")
+            self.logger.error(f"XSS scan error for {url}: {str(e)}")
     
     return vulnerabilities
