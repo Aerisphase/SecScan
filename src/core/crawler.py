@@ -136,3 +136,15 @@ class AdvancedCrawler:
         except Exception as e:
             self.logger.error(f"Crawling failed: {str(e)}", exc_info=True)
             return {}
+        
+from .http_client import HttpClient
+
+client = HttpClient()
+
+def crawl_page(url):
+    try:
+        response = client.get(url)
+        if response:
+            return parse_response(response)
+    except Exception as e:
+        logging.error(f"Crawler error for {url}: {e}")

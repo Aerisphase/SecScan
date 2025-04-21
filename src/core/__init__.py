@@ -3,6 +3,7 @@ from __future__ import annotations  # Должен быть первой стр�
 import sys
 from typing import Dict, List, Set, Optional
 from requests import Session
+from .http_client import HttpClient
 
 # Базовые типы для аннотаций
 __all__ = [
