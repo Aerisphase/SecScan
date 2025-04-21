@@ -1,165 +1,27 @@
-2025-04-21 01:58:23,156 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
-2025-04-21 01:58:24,538 - VulnScanner.Crawler - INFO - Found robots.txt at https://www.hackthissite.org/robots.txt
-2025-04-21 01:58:24,538 - VulnScanner.Crawler - INFO - Crawling: https://www.hackthissite.org/
-2025-04-21 01:58:26,104 - VulnScanner.Crawler - ERROR - Error crawling https://www.hackthissite.org/: 'AdvancedCrawler' object has no attribute '_extract_links'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 115, in crawl
-    new_links = self._extract_links(html, current_url)
-                ^^^^^^^^^^^^^^^^^^^
-AttributeError: 'AdvancedCrawler' object has no attribute '_extract_links'
-2025-04-21 01:58:26,108 - VulnScanner.Crawler - INFO - Crawling completed. Stats: {'pages_crawled': 1, 'links_found': 0, 'forms_found': 0, 'api_endpoints': 0}
-2025-04-21 01:58:26,108 - Main - INFO - Crawling completed. Pages: 1
-2025-04-21 01:58:26,108 - Main - ERROR - Scanner failed on https://www.hackthissite.org/: SQLiScanner.scan() missing 1 required positional argument: 'params'
-2025-04-21 01:58:26,108 - Main - ERROR - Scanner failed on https://www.hackthissite.org/: 'XSSScanner' object has no attribute 'scan'
-2025-04-21 01:58:26,109 - Main - INFO - Found 0 potential vulnerabilities
-2025-04-21 02:04:51,244 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
-2025-04-21 02:05:31,127 - Main - INFO - Crawling completed. Pages: 20
-2025-04-21 02:06:15,047 - Main - INFO - Found 0 potential vulnerabilities
-2025-04-21 02:14:37,709 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
-2025-04-21 02:15:10,575 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /missions/realistic/
-2025-04-21 02:15:20,075 - Main - INFO - Crawling completed. Pages: 20
-2025-04-21 02:16:05,089 - Main - INFO - Found 0 potential vulnerabilities
-2025-04-21 02:20:57,741 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: full)
-2025-04-21 02:21:37,397 - Main - INFO - Crawling completed. Pages: 20
-2025-04-21 02:21:37,397 - Main - ERROR - Critical error: SQLiScanner.__init__() takes 1 positional argument but 2 were given
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 54, in main
-    SQLiScanner(crawler.session),
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-TypeError: SQLiScanner.__init__() takes 1 positional argument but 2 were given
-2025-04-21 02:25:20,583 - Main - INFO - Starting scan for https://example.com (mode: fast)
-2025-04-21 02:25:22,620 - Main - INFO - Crawling completed. Pages: 1
-2025-04-21 02:25:22,620 - Main - ERROR - Critical error: SQLiScanner.__init__() takes 1 positional argument but 2 were given
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 54, in main
-    SQLiScanner(crawler.session),
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-TypeError: SQLiScanner.__init__() takes 1 positional argument but 2 were given
-2025-04-21 02:31:30,637 - Main - INFO - Starting scan for https://example.com (mode: fast)
-2025-04-21 02:31:31,703 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 02:31:31,706 - Reporter - ERROR - No results to display
-2025-04-21 02:32:33,340 - Main - INFO - Starting scan for https://example.com (mode: fast)
-2025-04-21 02:32:34,137 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 02:32:34,140 - Reporter - ERROR - No results to display
-2025-04-21 14:09:39,811 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 14:09:57,506 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 14:09:57,531 - Reporter - ERROR - No results to display
-2025-04-21 14:10:42,175 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 14:10:50,540 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 14:10:50,543 - Reporter - ERROR - No results to display
-2025-04-21 14:14:21,533 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 14:14:29,257 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 14:14:29,261 - Reporter - ERROR - No results to display
-2025-04-21 14:19:50,807 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 14:19:59,369 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 14:19:59,403 - Reporter - ERROR - No results to display
-2025-04-21 15:08:57,340 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 15:09:15,236 - Scanner - ERROR - Scanning error: '<' not supported between instances of 'int' and 'dict'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\main.py", line 49, in scan_website
-    crawl_data = crawler.crawl()
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 182, in crawl
-    while self.queue and len(self.visited_urls) < self.max_pages:
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'int' and 'dict'
-2025-04-21 15:09:15,259 - Reporter - ERROR - No results to display
-2025-04-21 16:28:07,194 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 16:28:07,195 - Crawler - INFO - Crawling https://www.hackthissite.org/
-2025-04-21 16:28:07,195 - Crawler - ERROR - Crawling failed: 'AdvancedCrawler' object has no attribute '_process_page'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 51, in crawl
-    page_data = self._process_page(current_url)
-                ^^^^^^^^^^^^^^^^^^
-AttributeError: 'AdvancedCrawler' object has no attribute '_process_page'
-2025-04-21 16:28:07,197 - Scanner - ERROR - No data collected during crawling
-2025-04-21 16:28:07,197 - Reporter - ERROR - No results to display
-2025-04-21 16:41:10,457 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 16:41:10,457 - Crawler - INFO - Crawling https://www.hackthissite.org/
-2025-04-21 16:41:10,458 - Crawler - ERROR - Crawling failed: 'AdvancedCrawler' object has no attribute '_process_page'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 51, in crawl
-    page_data = self._process_page(current_url)
-                ^^^^^^^^^^^^^^^^^^
-AttributeError: 'AdvancedCrawler' object has no attribute '_process_page'
-2025-04-21 16:41:10,460 - Scanner - ERROR - No data collected during crawling
-2025-04-21 16:41:10,460 - Reporter - ERROR - No results to display
-2025-04-21 19:15:22,113 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 19:15:22,113 - Crawler - INFO - Crawling https://www.hackthissite.org/
-2025-04-21 19:15:22,114 - Crawler - ERROR - Crawling failed: 'AdvancedCrawler' object has no attribute '_process_page'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 51, in crawl
-    page_data = self._process_page(current_url)
-                ^^^^^^^^^^^^^^^^^^
-AttributeError: 'AdvancedCrawler' object has no attribute '_process_page'
-2025-04-21 19:15:22,115 - Scanner - ERROR - No data collected during crawling
-2025-04-21 19:15:22,115 - Reporter - ERROR - No results to display
-2025-04-21 19:15:34,773 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 19:15:34,774 - Crawler - INFO - Crawling https://www.hackthissite.org/
-2025-04-21 19:15:34,774 - Crawler - ERROR - Crawling failed: 'AdvancedCrawler' object has no attribute '_process_page'
-Traceback (most recent call last):
-  File "C:\Users\ashay\Documents\GitHub\SecScan\src\core\crawler.py", line 51, in crawl
-    page_data = self._process_page(current_url)
-                ^^^^^^^^^^^^^^^^^^
-AttributeError: 'AdvancedCrawler' object has no attribute '_process_page'
-2025-04-21 19:15:34,775 - Scanner - ERROR - No data collected during crawling
-2025-04-21 19:15:34,775 - Reporter - ERROR - No results to display
-2025-04-21 19:17:41,207 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
-2025-04-21 19:17:41,207 - Crawler - INFO - Crawling: https://www.hackthissite.org/
-2025-04-21 19:17:42,645 - Crawler - INFO - Crawling: https://www.hackthissite.org
-2025-04-21 19:17:43,805 - Crawler - INFO - Crawling: https://hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion
-2025-04-21 19:17:43,808 - Crawler - ERROR - Error processing https://hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion: HTTPSConnectionPool(host='hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000001648FCD4A50>: Failed to resolve 'hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion' ([Errno 11001] getaddrinfo failed)"))
-2025-04-21 19:17:44,809 - Crawler - INFO - Crawling: http://hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion
-2025-04-21 19:17:44,811 - Crawler - ERROR - Error processing http://hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion: HTTPConnectionPool(host='hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion', port=80): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPConnection object at 0x000001648FBCEBA0>: Failed to resolve 'hackthisjogneh42n5o7gbzrewxee3vyu6ex37ukyvdw6jm66npakiyd.onion' ([Errno 11001] getaddrinfo failed)"))
-2025-04-21 19:17:45,812 - Crawler - INFO - Crawling: https://www.irc.hackthissite.org/chat
-2025-04-21 19:17:46,183 - Crawler - ERROR - Error processing https://www.irc.hackthissite.org/chat: HTTPSConnectionPool(host='www.irc.hackthissite.org', port=443): Max retries exceeded with url: /chat (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1028)')))
-2025-04-21 19:17:47,183 - Scanner - INFO - Running XSS scanner...
-2025-04-21 19:17:47,184 - Scanner - ERROR - xss scanner failed: 'list' object has no attribute 'items'
-2025-04-21 19:17:47,184 - Scanner - INFO - Running SQLI scanner...
-2025-04-21 19:17:54,211 - Reporter - INFO - 
-Scan completed
-Pages crawled: 5
-Links found: 148
-Forms found: 2
-2025-04-21 19:17:54,211 - Reporter - INFO - No vulnerabilities found
+2025-04-21 19:49:00,694 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
+2025-04-21 19:49:00,694 - Crawler - INFO - Crawling: https://hackthissite.org/
+2025-04-21 19:49:02,141 - Crawler - INFO - Crawling: https://hackthissite.org
+2025-04-21 19:49:03,304 - Crawler - INFO - Crawling: https://irc.hackthissite.org/chat
+2025-04-21 19:49:04,916 - Crawler - INFO - Crawling: https://hackthissite.org/discord
+2025-04-21 19:49:06,511 - Crawler - INFO - Crawling: https://hackthissite.org/forums
+2025-04-21 19:49:07,765 - Crawler - INFO - Crawling: https://cafepress.com/htsstore
+2025-04-21 19:49:09,652 - Crawler - INFO - Crawling: https://hts.io
+2025-04-21 19:49:10,936 - Crawler - INFO - Crawling: https://cryptopaste.org
+2025-04-21 19:49:30,953 - Crawler - ERROR - Error processing https://cryptopaste.org: HTTPSConnectionPool(host='cryptopaste.org', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002665F8D5BD0>, 'Connection to cryptopaste.org timed out. (connect timeout=10)'))
+2025-04-21 19:49:31,954 - Crawler - INFO - Crawling: https://facebook.com/hackthissite.org
+2025-04-21 19:49:32,008 - Crawler - ERROR - Error processing https://facebook.com/hackthissite.org: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2025-04-21 19:49:33,009 - Crawler - INFO - Crawling: https://twitter.com/hackthissite
+2025-04-21 19:49:33,062 - Crawler - ERROR - Error processing https://twitter.com/hackthissite: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))
+2025-04-21 19:49:34,062 - Crawler - INFO - Crawling: https://github.com/hackthissite
+2025-04-21 19:49:35,746 - Crawler - INFO - Crawling: https://hackthissite.org/advertise
+2025-04-21 19:49:37,624 - Crawler - INFO - Crawling: https://hackthissite.org/user/login
+2025-04-21 19:49:38,879 - Crawler - INFO - Crawling: https://hackthissite.org/register
+2025-04-21 19:49:40,165 - Crawler - INFO - Crawling: https://hackthissite.org/user/resetpass
+2025-04-21 19:49:41,417 - Crawler - INFO - Crawling: https://hackthissite.org/user/forgotusername
+2025-04-21 19:49:42,674 - Crawler - INFO - Crawling: https://hackthissite.org/donate/
+2025-04-21 19:49:43,933 - Crawler - INFO - Crawling: https://hackthissite.org/missions/basic/
+2025-04-21 19:49:45,183 - Crawler - INFO - Crawling: https://hackthissite.org/missions/realistic/
+2025-04-21 19:49:46,437 - Crawler - INFO - Crawling: https://hackthissite.org/missions/application/
+2025-04-21 19:49:47,703 - Scanner - INFO - Running XSS scanner...
+2025-04-21 19:49:47,703 - Scanner - ERROR - xss scanner failed: 'list' object has no attribute 'items'
+2025-04-21 19:49:47,703 - Scanner - INFO - Running SQLI scanner...
