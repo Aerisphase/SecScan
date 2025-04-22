@@ -1,0 +1,12 @@
+2025-04-22 11:23:17,093 - Main - INFO - Starting scan for https://www.hackthissite.org/ (mode: fast)
+2025-04-22 11:23:17,094 - Crawler - INFO - Crawling: https://hackthissite.org/
+2025-04-22 11:23:17,685 - Crawler - ERROR - Error processing https://hackthissite.org/: 503 Server Error: Service Unavailable for url: https://hackthissite.org/
+2025-04-22 11:23:18,687 - Scanner - INFO - Running XSS scanner...
+2025-04-22 11:23:18,688 - Scanner - ERROR - xss scanner failed: 'list' object has no attribute 'items'
+2025-04-22 11:23:18,689 - Scanner - INFO - Running SQLI scanner...
+2025-04-22 11:23:18,689 - Reporter - INFO - 
+Scan completed
+Pages crawled: 1
+Links found: 0
+Forms found: 0
+2025-04-22 11:23:18,689 - Reporter - INFO - No vulnerabilities found
