@@ -1,162 +1,102 @@
-# SecScan - Advanced Web Vulnerability Scanner
-
-SecScan is a powerful and extensible web vulnerability scanner designed to help security professionals and developers identify security issues in web applications. It combines automated crawling with advanced security testing capabilities to provide comprehensive security analysis.
-
-## Features
-
-- **Automated Web Crawling**
-  - Intelligent URL discovery and normalization
-  - Form detection and analysis
-  - Rate limiting to prevent server overload
-  - Support for authenticated scanning
-
-- **Security Testing**
-  - SQL Injection detection
-  - Cross-Site Scripting (XSS) detection
-  - Security headers analysis
-  - CSRF token detection
-  - CAPTCHA detection
-
-- **Advanced Features**
-  - Configurable scan intensity (fast/full)
-  - Proxy support
-  - SSL/TLS verification
-  - Custom user agent support
-  - Comprehensive logging
-  - Detailed security recommendations
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/Aerisphase/SecScan.git
-cd SecScan
-```
-
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Basic Usage
-
-```bash
-python scanner.py --target https://example.com
-```
-
-### Advanced Options
-
-```bash
-python scanner.py --target https://example.com \
-                 --scan-type full \
-                 --delay 2.0 \
-                 --max-pages 50 \
-                 --verify-ssl \
-                 --proxy http://proxy:8080 \
-                 --auth user:pass \
-                 --max-retries 5
-```
-
-### Command Line Arguments
-
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `--target` | Target URL to scan | Required |
-| `--scan-type` | Scan intensity level (fast/full) | fast |
-| `--delay` | Delay between requests in seconds | 1.0 |
-| `--max-pages` | Maximum pages to crawl | 20 |
-| `--user-agent` | Custom User-Agent string | SecScan/1.0 |
-| `--verify-ssl` | Verify SSL certificates | False |
-| `--proxy` | Proxy server URL | None |
-| `--auth` | Basic auth credentials (user:pass) | None |
-| `--max-retries` | Maximum retries for failed requests | 3 |
-
-## Security Features
-
-### HTTP Client Security
-- Rate limiting to prevent server overload
-- Configurable retry mechanism with exponential backoff
-- SSL/TLS verification options
-- Proxy support
-- Authentication support
-
-### Crawler Security
-- URL validation and sanitization
-- Dangerous URL pattern detection
-- Non-content URL filtering
-- Security header analysis
-- CSRF and CAPTCHA detection
-
-### Security Headers Analysis
-- X-Frame-Options
-- X-Content-Type-Options
-- X-XSS-Protection
-- Content-Security-Policy
-- Strict-Transport-Security
-
-## Output
-
-The scanner provides detailed output including:
-- Scan statistics (pages crawled, links found, forms found)
-- Security recommendations
-- Detected vulnerabilities
-- Security headers analysis
-
-Example output:
-```
-Scan completed
-Pages crawled: 15
-Links found: 42
-Forms found: 8
-
-Security Recommendations:
-[1] Missing X-Frame-Options header - Consider adding to prevent clickjacking
-[2] Missing Content-Security-Policy header - Consider implementing CSP
-
-Found 2 vulnerabilities:
-[1] SQL Injection at https://example.com/login
-    Parameter: username
-    Payload: ' OR '1'='1
-    Severity: high
-
-[2] XSS at https://example.com/search
-    Parameter: query
-    Payload: <script>alert(1)</script>
-    Severity: medium
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Security Considerations
-
-- Use this tool responsibly and only on systems you have permission to scan
-- Be mindful of rate limits and server load
-- Consider using a proxy for sensitive scans
-- Always verify SSL certificates in production environments
-- Keep the tool and its dependencies updated
-
-## Support
-
-For support, please open an issue in the GitHub repository or contact the maintainers.
-
-## Acknowledgments
-
-- Thanks to all contributors who have helped improve this project
-- Special thanks to the open-source security community for their valuable insights and tools
+SecScan Documentation
+Prerequisites
+Python 3.8 or higher
+pip (Python package manager)
+SSL certificates (for secure HTTPS/WSS connections)
+Installation
+Clone the repository:
+Apply to crawler.py
+Run
+Install dependencies:
+Apply to crawler.py
+Run
+Set up environment variables:
+Create a .env file in the project root with the following variables:
+Apply to crawler.py
+Launching the Server
+Navigate to the server directory:
+Apply to crawler.py
+Run
+Start the server:
+Apply to crawler.py
+Run
+The server will start with the following default configuration:
+Host: localhost
+Port: 8000
+SSL: Enabled (requires valid SSL certificates)
+API Key: Required for authentication
+Server Configuration Options
+You can modify the server configuration by editing the .env file:
+SERVER_HOST: Change the host address (default: localhost)
+SERVER_PORT: Change the port number (default: 8000)
+SSL_CERT_PATH: Path to your SSL certificate
+SSL_KEY_PATH: Path to your SSL private key
+SECSCAN_API_KEY: Your API key for authentication
+Launching the Client
+Web Interface
+Navigate to the client directory:
+Apply to crawler.py
+Run
+Start the client web server:
+Apply to crawler.py
+Run
+Open your web browser and navigate to:
+Apply to crawler.py
+Command Line Interface
+Navigate to the project root:
+Apply to crawler.py
+Run
+Run the scanner with required parameters:
+Apply to crawler.py
+Run
+Client Configuration Options
+The client supports the following command-line arguments:
+--target: Target URL to scan (required)
+--server: Server URL (default: https://localhost:8000)
+--api-key: API key for authentication (required)
+--scan-type: Scan intensity level (choices: fast, full, default: fast)
+--delay: Delay between requests in seconds (default: 1.0)
+--max-pages: Maximum pages to crawl (default: 20)
+--user-agent: Custom User-Agent string
+--verify-ssl: Verify SSL certificates (default: true)
+--proxy: Proxy server URL
+--auth: Basic auth credentials (user:pass)
+--max-retries: Maximum number of retries for failed requests (default: 3)
+Example Usage
+Basic Scan
+Apply to crawler.py
+Run
+Full Scan with Custom Settings
+Apply to crawler.py
+Run
+Using Proxy
+Apply to crawler.py
+Run
+Security Considerations
+Always use HTTPS/WSS for secure communication
+Keep your API key secure and never share it
+Use strong SSL certificates
+Consider using a proxy for anonymity
+Monitor server logs for suspicious activity
+Troubleshooting
+SSL Certificate Errors
+Ensure your SSL certificates are valid and properly configured
+Check the paths in your .env file
+Verify certificate permissions
+Connection Issues
+Check if the server is running
+Verify the server URL and port
+Ensure your API key is correct
+Check firewall settings
+Scan Failures
+Verify the target URL is accessible
+Check network connectivity
+Review server logs for error messages
+Adjust scan parameters if needed
+Logging
+Server logs are stored in server.log
+Client logs are stored in client.log
+Scan results are displayed in the console and can be saved to a file
 
 ## 1. Назначение проекта
 Разработка автоматизированного сканера уязвимостей с элементами искусственного интеллекта (AI/ML) для:
