@@ -9,31 +9,31 @@
 ## Installation
 1. Clone the repository:
 ```bash
-Apply to crawler.py
-Run
+git clone https://github.com/Aerisphase/SecScan.git
+cd SecScan
 ```
 2. Install dependencies:
 ```bash
-Apply to crawler.py
-Run
+pip install -r requirements.txt
 ```
 3. Set up environment variables:
    - Create a `.env` file in the project root with the following variables:
 ```bash
-Apply to crawler.py
-Run
+SECSCAN_API_KEY=your_api_key_here
+SERVER_HOST=localhost
+SERVER_PORT=8000
+SSL_CERT_PATH=path/to/your/cert.pem
+SSL_KEY_PATH=path/to/your/key.pem
 ```
 
 ## Launching the Server
 1. Navigate to the server directory:
 ```bash
-Apply to crawler.py
-Run
+cd src/server
 ```
 2. Start the server:
 ```bash
-Apply to crawler.py
-Run
+python server.py
 ```
 
 The server will start with the following default configuration:
@@ -55,29 +55,15 @@ Modify the server configuration by editing the `.env` file:
 ### Web Interface
 1. Navigate to the client directory:
 ```bash
-Apply to crawler.py
-Run
+cd src/client
 ```
 2. Start the client web server:
 ```bash
-Apply to crawler.py
-Run
+python client.py
 ```
 3. Open your web browser and navigate to:
 ```bash
-Apply to crawler.py
-```
-
-### Command Line Interface
-1. Navigate to the project root:
-```bash
-Apply to crawler.py
-Run
-```
-2. Run the scanner with required parameters:
-```bash
-Apply to crawler.py
-Run
+https://localhost:8002/static/index.html
 ```
 
 ### Client Configuration Options
