@@ -390,25 +390,4 @@ The scanner provides detailed output including:
 - Detected vulnerabilities
 - Security headers analysis
 
-Example output:
-```
-Scan completed
-Pages crawled: 15
-Links found: 42
-Forms found: 8
 
-Security Recommendations:
-[1] Missing X-Frame-Options header - Consider adding to prevent clickjacking
-[2] Missing Content-Security-Policy header - Consider implementing CSP
-
-Found 2 vulnerabilities:
-[1] SQL Injection at https://example.com/login
-    Parameter: username
-    Payload: ' OR '1'='1
-    Severity: high
-
-[2] XSS at https://example.com/search
-    Parameter: query
-    Payload: <script>alert(1)</script>
-    Severity: medium
-```
