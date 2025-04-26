@@ -1,84 +1,100 @@
-```markdown
-# SecScan Documentation
+markdown
+# Документация SecScan
 
-## Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
-- SSL certificates (for secure HTTPS/WSS connections)
+## Требования
+- Python 3.8 или новее
+- pip (менеджер пакетов Python)
+- SSL-сертификаты (для безопасных HTTPS/WSS-соединений)
 
-## Installation
-1. Clone the repository:
+## Установка
+1. Клонируйте репозиторий:
 ```bash
 git clone https://github.com/Aerisphase/SecScan.git
 cd SecScan
-```
-2. Install dependencies:
-```bash
+Установите зависимости:
+
+bash
 pip install -r requirements.txt
-```
-3. Set up environment variables:
-   - Create a `.env` file in the project root with the following variables:
-```bash
+Настройте переменные окружения:
+
+Создайте файл .env в корне проекта со следующими переменными:
+
+bash
 SECSCAN_API_KEY=your_api_key_here
 SERVER_HOST=localhost
 SERVER_PORT=8000
 SSL_CERT_PATH=path/to/your/cert.pem
 SSL_KEY_PATH=path/to/your/key.pem
-```
+Запуск сервера
+Перейдите в директорию сервера:
 
-## Launching the Server
-1. Navigate to the server directory:
-```bash
+bash
 cd src/server
-```
-2. Start the server:
-```bash
+Запустите сервер:
+
+bash
 python server.py
-```
+Сервер запустится со следующей конфигурацией по умолчанию:
 
-The server will start with the following default configuration:
-- **Host**: `localhost`
-- **Port**: `8000`
-- **SSL**: Enabled (requires valid SSL certificates)
-- **API Key**: Required for authentication
+Хост: localhost
 
-### Server Configuration Options
-Modify the server configuration by editing the `.env` file:
-- `SERVER_HOST`: Change the host address (default: `localhost`)
-- `SERVER_PORT`: Change the port number (default: `8000`)
-- `SSL_CERT_PATH`: Path to your SSL certificate
-- `SSL_KEY_PATH`: Path to your SSL private key
-- `SECSCAN_API_KEY`: Your API key for authentication
+Порт: 8000
 
-## Launching the Client
+SSL: Включен (требуются валидные SSL-сертификаты)
 
-### Web Interface
-1. Navigate to the client directory:
-```bash
+API-ключ: Требуется для аутентификации
+
+Настройки сервера
+Измените конфигурацию через файл .env:
+
+SERVER_HOST: Адрес хоста (по умолчанию: localhost)
+
+SERVER_PORT: Номер порта (по умолчанию: 8000)
+
+SSL_CERT_PATH: Путь к SSL-сертификату
+
+SSL_KEY_PATH: Путь к приватному SSL-ключу
+
+SECSCAN_API_KEY: Ваш API-ключ для аутентификации
+
+Запуск клиента
+Веб-интерфейс
+Перейдите в директорию клиента:
+
+bash
 cd src/client
-```
-2. Start the client web server:
-```bash
-python client.py
-```
-3. Open your web browser and navigate to:
-```bash
-https://localhost:8002/static/index.html
-```
+Запустите веб-сервер клиента:
 
-### Client Configuration Options
-Supported command-line arguments:
-- `--target`: Target URL to scan (required)
-- `--server`: Server URL (default: `https://localhost:8000`)
-- `--api-key`: API key for authentication (required)
-- `--scan-type`: Scan intensity level (choices: `fast`, `full`, default: `fast`)
-- `--delay`: Delay between requests in seconds (default: `1.0`)
-- `--max-pages`: Maximum pages to crawl (default: `20`)
-- `--user-agent`: Custom User-Agent string
-- `--verify-ssl`: Verify SSL certificates (default: `true`)
-- `--proxy`: Proxy server URL
-- `--auth`: Basic auth credentials (`user:pass`)
-- `--max-retries`: Maximum retries for failed requests (default: `3`)
+bash
+python client.py
+Откройте в браузере:
+
+bash
+https://localhost:8002/static/index.html
+Настройки клиента
+Поддерживаемые аргументы командной строки:
+
+--target: Целевой URL для сканирования (обязательно)
+
+--server: Адрес сервера (по умолчанию: https://localhost:8000)
+
+--api-key: API-ключ для аутентификации (обязательно)
+
+--scan-type: Уровень сканирования (варианты: fast, full, по умолчанию: fast)
+
+--delay: Задержка между запросами в секундах (по умолчанию: 1.0)
+
+--max-pages: Максимальное количество страниц для сканирования (по умолчанию: 20)
+
+--user-agent: Пользовательская строка User-Agent
+
+--verify-ssl: Проверять SSL-сертификаты (по умолчанию: true)
+
+--proxy: URL прокси-сервера
+
+--auth: Учетные данные Basic Auth (user:pass)
+
+--max-retries: Максимальное количество попыток при ошибках (по умолчанию: 3)
 
 
 ## 1. Назначение проекта
