@@ -2,7 +2,7 @@ import sys
 import io
 import argparse
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from core.crawler import AdvancedCrawler
 from core.scanners import SQLiScanner, XSSScanner
 
@@ -35,7 +35,39 @@ def parse_args():
     parser.add_argument('--user-agent', 
                       default='SecScan/1.0 (+https://github.com/Aerisphase/SecScan)',
                       help='Custom User-Agent string')
+    parser.add_argument('--verify-ssl', action='store_true',
+                      help='Verify SSL certificates')
+    parser.add_argument('--proxy', help='Proxy server URL (e.g., http://proxy:8080)')
+    parser.add_argument('--auth', help='Basic auth credentials (user:pass)')
+    parser.add_argument('--max-retries', type=int, default=3,
+                      help='Maximum number of retries for failed requests')
     return parser.parse_args()
+
+def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
+    """Analyze security headers and return recommendations"""
+    recommendations = []
+    
+    # Check X-Frame-Options
+    if not headers.get('x-frame-options'):
+        recommendations.append("Missing X-Frame-Options header - Consider adding to prevent clickjacking")
+    
+    # Check X-Content-Type-Options
+    if not headers.get('x-content-type-options'):
+        recommendations.append("Missing X-Content-Type-Options header - Consider adding 'nosniff'")
+    
+    # Check X-XSS-Protection
+    if not headers.get('x-xss-protection'):
+        recommendations.append("Missing X-XSS-Protection header - Consider adding '1; mode=block'")
+    
+    # Check Content-Security-Policy
+    if not headers.get('content-security-policy'):
+        recommendations.append("Missing Content-Security-Policy header - Consider implementing CSP")
+    
+    # Check Strict-Transport-Security
+    if not headers.get('strict-transport-security'):
+        recommendations.append("Missing Strict-Transport-Security header - Consider adding HSTS")
+    
+    return recommendations
 
 def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
     """Основная функция сканирования"""
@@ -47,7 +79,11 @@ def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
             'max_pages': int(config.get('max_pages', 20)),
             'delay': float(config.get('delay', 1.0)),
             'user_agent': str(config.get('user_agent', '')),
-            'scan_type': str(config.get('scan_type', 'fast'))
+            'scan_type': str(config.get('scan_type', 'fast')),
+            'verify_ssl': bool(config.get('verify_ssl', True)),
+            'proxy': config.get('proxy'),
+            'auth': config.get('auth'),
+            'max_retries': int(config.get('max_retries', 3))
         }
 
         logger.debug(f"Using config: {validated_config}")
@@ -58,10 +94,13 @@ def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
             logger.error("No data collected during crawling")
             return None
 
+        # Analyze security headers
+        security_recommendations = analyze_security_headers(crawl_data.get('security_headers', {}))
+
         # Инициализация сканеров
         scanners = {
-            'xss': XSSScanner(crawler.session),
-            'sqli': SQLiScanner(crawler.session)
+            'xss': XSSScanner(crawler.client),
+            'sqli': SQLiScanner(crawler.client)
         }
 
         # Сбор уязвимостей
@@ -81,7 +120,9 @@ def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
                 'links_found': crawl_data.get('links_found', 0),
                 'forms_found': crawl_data.get('forms_found', 0)
             },
-            'vulnerabilities': vulnerabilities
+            'vulnerabilities': vulnerabilities,
+            'security_recommendations': security_recommendations,
+            'security_headers': crawl_data.get('security_headers', {})
         }
 
     except Exception as e:
@@ -104,6 +145,13 @@ def print_results(results: Dict):
         f"Links found: {stats.get('links_found', 0)}\n"
         f"Forms found: {stats.get('forms_found', 0)}"
     )
+
+    # Вывод рекомендаций по безопасности
+    recommendations = results.get('security_recommendations', [])
+    if recommendations:
+        logger.warning("\nSecurity Recommendations:")
+        for i, rec in enumerate(recommendations, 1):
+            logger.warning(f"[{i}] {rec}")
 
     # Вывод уязвимостей
     vulnerabilities = results.get('vulnerabilities', [])
@@ -132,7 +180,11 @@ def main():
             'scan_type': args.scan_type,
             'delay': args.delay,
             'max_pages': args.max_pages,
-            'user_agent': args.user_agent
+            'user_agent': args.user_agent,
+            'verify_ssl': args.verify_ssl,
+            'proxy': args.proxy,
+            'auth': args.auth,
+            'max_retries': args.max_retries
         }
 
         results = scan_website(args.target, config)

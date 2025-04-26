@@ -3,22 +3,18 @@ import os
 from pathlib import Path
 import socket
 from contextlib import closing
-
-# Add the project root directory to Python path
-project_root = str(Path(__file__).parent.parent.parent)
-sys.path.append(project_root)
-
-from fastapi import FastAPI, HTTPException, Depends, Security
+import asyncio
+import logging
+import secrets
+from datetime import datetime
+from typing import Dict, List, Optional
+from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
-from typing import Optional, List, Dict
 import uvicorn
-import logging
-from datetime import datetime
-import secrets
-import os
 from src.core.scanners import SQLiScanner, XSSScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
@@ -85,6 +81,31 @@ class ScanResult(BaseModel):
 # In-memory storage for scan results (replace with database in production)
 scan_results = {}
 
+# WebSocket manager for log streaming
+class LogManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+        self.logger = logging.getLogger('WebSocket')
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        self.logger.info("New WebSocket connection established")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        self.logger.info("WebSocket connection closed")
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                self.logger.error(f"Error broadcasting message: {str(e)}")
+                self.disconnect(connection)
+
+log_manager = LogManager()
+
 def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
     if api_key_header == API_KEY:
         return api_key_header
@@ -110,26 +131,35 @@ async def start_scan(request: ScanRequest, api_key: str = Depends(get_api_key)):
             'scan_type': request.scan_type
         }
         
+        await log_manager.broadcast(f"Starting scan {scan_id} for {request.target_url}")
+        
         crawler = AdvancedCrawler(request.target_url, config)
         crawl_data = crawler.crawl()
         
         if not crawl_data:
+            await log_manager.broadcast(f"Scan {scan_id} failed: Failed to crawl target")
             raise HTTPException(status_code=400, detail="Failed to crawl target")
+        
+        await log_manager.broadcast(f"Scan {scan_id}: Crawled {crawl_data.get('pages_crawled', 0)} pages")
         
         # Run scanners
         scanners = {
-            'xss': XSSScanner(crawler.session),
-            'sqli': SQLiScanner(crawler.session)
+            'xss': XSSScanner(crawler.client),
+            'sqli': SQLiScanner(crawler.client)
         }
         
         vulnerabilities = []
         for scanner_name, scanner in scanners.items():
             try:
+                await log_manager.broadcast(f"Scan {scan_id}: Running {scanner_name.upper()} scanner...")
                 vulns = scanner.scan(request.target_url, crawl_data.get('forms', []))
                 if vulns:
                     vulnerabilities.extend(vulns)
+                    await log_manager.broadcast(f"Scan {scan_id}: Found {len(vulns)} {scanner_name.upper()} vulnerabilities")
             except Exception as e:
-                logger.error(f"{scanner_name} scanner failed: {str(e)}")
+                error_msg = f"{scanner_name} scanner failed: {str(e)}"
+                await log_manager.broadcast(f"Scan {scan_id}: {error_msg}")
+                logger.error(error_msg)
         
         # Store results
         result = ScanResult(
@@ -145,10 +175,13 @@ async def start_scan(request: ScanRequest, api_key: str = Depends(get_api_key)):
         )
         
         scan_results[scan_id] = result
+        await log_manager.broadcast(f"Scan {scan_id} completed successfully")
         return result
         
     except Exception as e:
-        logger.error(f"Scan failed: {str(e)}")
+        error_msg = f"Scan failed: {str(e)}"
+        await log_manager.broadcast(error_msg)
+        logger.error(error_msg)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/scan/{scan_id}", response_model=ScanResult)
@@ -156,6 +189,17 @@ async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
     if scan_id not in scan_results:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan_results[scan_id]
+
+# Add WebSocket endpoint
+@app.websocket("/ws/logs")
+async def websocket_endpoint(websocket: WebSocket):
+    await log_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        log_manager.disconnect(websocket)
 
 if __name__ == "__main__":
     try:
@@ -174,13 +218,20 @@ if __name__ == "__main__":
         logger.info(f"Server starting on https://localhost:{port}")
         logger.info(f"Static files served from: {static_dir}")
         
-        uvicorn.run(
-            app, 
-            host="0.0.0.0", 
+        # Configure uvicorn with proper shutdown handling
+        config = uvicorn.Config(
+            app,
+            host="0.0.0.0",
             port=port,
             ssl_keyfile=ssl_keyfile,
-            ssl_certfile=ssl_certfile
+            ssl_certfile=ssl_certfile,
+            log_level="info",
+            loop="asyncio",
+            timeout_keep_alive=30
         )
+        server = uvicorn.Server(config)
+        server.run()
+        
     except Exception as e:
         logger.error(f"Failed to start server: {str(e)}")
         sys.exit(1) 

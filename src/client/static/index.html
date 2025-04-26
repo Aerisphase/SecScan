@@ -22,6 +22,9 @@
                         <h4>New Scan</h4>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <strong>Note:</strong> You need to set the SECSCAN_API_KEY environment variable on the server and enter the same key when prompted.
+                        </div>
                         <form id="scanForm">
                             <div class="mb-3">
                                 <label for="targetUrl" class="form-label">Target URL</label>
@@ -41,6 +44,10 @@
                             <div class="mb-3">
                                 <label for="delay" class="form-label">Delay (seconds)</label>
                                 <input type="number" class="form-control" id="delay" value="1.0" step="0.1" min="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="userAgent" class="form-label">User Agent</label>
+                                <input type="text" class="form-control" id="userAgent" placeholder="SecScan/1.0 (+https://github.com/Aerisphase/SecScan)">
                             </div>
                             <button type="submit" class="btn btn-primary">Start Scan</button>
                         </form>

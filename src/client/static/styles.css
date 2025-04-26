@@ -17,48 +17,98 @@ body {
 }
 
 .vulnerability-item {
-    border-left: 4px solid #dc3545;
-    margin-bottom: 1rem;
+    border-left: 4px solid #ffc107;
     padding: 1rem;
+    margin-bottom: 1rem;
     background-color: #fff;
-    border-radius: 4px;
+    border-radius: 0.25rem;
+}
+
+.vulnerability-item.critical {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
 }
 
 .vulnerability-item.high {
-    border-left-color: #dc3545;
+    border-left-color: #fd7e14;
+    background-color: #fff8f0;
 }
 
 .vulnerability-item.medium {
     border-left-color: #ffc107;
+    background-color: #fffcf0;
 }
 
 .vulnerability-item.low {
     border-left-color: #28a745;
+    background-color: #f0fff4;
+}
+
+.vulnerability-item p {
+    margin-bottom: 0.5rem;
+}
+
+.vulnerability-item h6 {
+    color: #343a40;
+    margin-bottom: 1rem;
 }
 
 .stats-card {
-    background-color: #fff;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
     padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
 }
 
 .stats-item {
     display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #eee;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0.5rem;
 }
 
-.stats-item:last-child {
-    border-bottom: none;
+.stats-item span:first-child {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.stats-item span:last-child {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #343a40;
 }
 
 .loading {
     display: flex;
     justify-content: center;
-    align-items: center;
     padding: 2rem;
+}
+
+.alert {
+    margin-bottom: 1rem;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+
+.alert-info {
+    background-color: #e7f5ff;
+    border: 1px solid #b8daff;
+    color: #0c5460;
+}
+
+.alert-danger {
+    background-color: #fff5f5;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-success {
+    background-color: #f0fff4;
+    border: 1px solid #c3e6cb;
+    color: #155724;
 }
 
 .spinner-border {

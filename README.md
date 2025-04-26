@@ -1,23 +1,29 @@
-# SecScan - Web Vulnerability Scanner
+# SecScan - Advanced Web Vulnerability Scanner
 
-SecScan is a powerful web vulnerability scanner that helps identify security issues in web applications. The tool is built with a client-server architecture to provide secure and scalable scanning capabilities.
+SecScan is a powerful and extensible web vulnerability scanner designed to help security professionals and developers identify security issues in web applications. It combines automated crawling with advanced security testing capabilities to provide comprehensive security analysis.
 
 ## Features
 
-- SQL Injection detection
-- Cross-Site Scripting (XSS) detection
-- Advanced crawling capabilities
-- Secure client-server communication
-- API key authentication
-- HTTPS/TLS encryption
-- Configurable scan parameters
+- **Automated Web Crawling**
+  - Intelligent URL discovery and normalization
+  - Form detection and analysis
+  - Rate limiting to prevent server overload
+  - Support for authenticated scanning
 
-## Architecture
+- **Security Testing**
+  - SQL Injection detection
+  - Cross-Site Scripting (XSS) detection
+  - Security headers analysis
+  - CSRF token detection
+  - CAPTCHA detection
 
-SecScan is built with a client-server architecture:
-
-- **Server**: Handles scan requests, manages scan jobs, and stores results
-- **Client**: Provides a user interface and communicates with the server
+- **Advanced Features**
+  - Configurable scan intensity (fast/full)
+  - Proxy support
+  - SSL/TLS verification
+  - Custom user agent support
+  - Comprehensive logging
+  - Detailed security recommendations
 
 ## Installation
 
@@ -38,55 +44,119 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Generate SSL certificates for secure communication:
-```bash
-openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
-```
-
 ## Usage
 
-### Starting the Server
+### Basic Usage
 
-1. Set the API key (optional, a random key will be generated if not set):
 ```bash
-export SECSCAN_API_KEY="your-secret-key"
+python scanner.py --target https://example.com
 ```
 
-2. Start the server:
+### Advanced Options
+
 ```bash
-python src/server/server.py
+python scanner.py --target https://example.com \
+                 --scan-type full \
+                 --delay 2.0 \
+                 --max-pages 50 \
+                 --verify-ssl \
+                 --proxy http://proxy:8080 \
+                 --auth user:pass \
+                 --max-retries 5
 ```
 
-The server will start on `https://localhost:8000` with SSL/TLS encryption.
+### Command Line Arguments
 
-### Using the Client
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--target` | Target URL to scan | Required |
+| `--scan-type` | Scan intensity level (fast/full) | fast |
+| `--delay` | Delay between requests in seconds | 1.0 |
+| `--max-pages` | Maximum pages to crawl | 20 |
+| `--user-agent` | Custom User-Agent string | SecScan/1.0 |
+| `--verify-ssl` | Verify SSL certificates | False |
+| `--proxy` | Proxy server URL | None |
+| `--auth` | Basic auth credentials (user:pass) | None |
+| `--max-retries` | Maximum retries for failed requests | 3 |
 
-1. Run a scan:
-```bash
-python src/client/client.py --target https://example.com --api-key your-secret-key
+## Security Features
+
+### HTTP Client Security
+- Rate limiting to prevent server overload
+- Configurable retry mechanism with exponential backoff
+- SSL/TLS verification options
+- Proxy support
+- Authentication support
+
+### Crawler Security
+- URL validation and sanitization
+- Dangerous URL pattern detection
+- Non-content URL filtering
+- Security header analysis
+- CSRF and CAPTCHA detection
+
+### Security Headers Analysis
+- X-Frame-Options
+- X-Content-Type-Options
+- X-XSS-Protection
+- Content-Security-Policy
+- Strict-Transport-Security
+
+## Output
+
+The scanner provides detailed output including:
+- Scan statistics (pages crawled, links found, forms found)
+- Security recommendations
+- Detected vulnerabilities
+- Security headers analysis
+
+Example output:
 ```
+Scan completed
+Pages crawled: 15
+Links found: 42
+Forms found: 8
 
-Additional options:
-- `--server`: Server URL (default: https://localhost:8000)
-- `--scan-type`: Scan intensity (fast/full)
-- `--delay`: Delay between requests
-- `--max-pages`: Maximum pages to crawl
-- `--user-agent`: Custom User-Agent string
+Security Recommendations:
+[1] Missing X-Frame-Options header - Consider adding to prevent clickjacking
+[2] Missing Content-Security-Policy header - Consider implementing CSP
 
-## Security Considerations
+Found 2 vulnerabilities:
+[1] SQL Injection at https://example.com/login
+    Parameter: username
+    Payload: ' OR '1'='1
+    Severity: high
 
-- All communication between client and server is encrypted using HTTPS/TLS
-- API key authentication is required for all requests
-- The server should be deployed in a secure environment
-- Regular security audits are recommended
+[2] XSS at https://example.com/search
+    Parameter: query
+    Payload: <script>alert(1)</script>
+    Severity: medium
+```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Security Considerations
+
+- Use this tool responsibly and only on systems you have permission to scan
+- Be mindful of rate limits and server load
+- Consider using a proxy for sensitive scans
+- Always verify SSL certificates in production environments
+- Keep the tool and its dependencies updated
+
+## Support
+
+For support, please open an issue in the GitHub repository or contact the maintainers.
+
+## Acknowledgments
+
+- Thanks to all contributors who have helped improve this project
+- Special thanks to the open-source security community for their valuable insights and tools
 
 ## 1. Назначение проекта
 Разработка автоматизированного сканера уязвимостей с элементами искусственного интеллекта (AI/ML) для:
@@ -275,15 +345,82 @@ source venv/bin/activate
 
 ---
 
-### 📦 **3. Установка зависимостей**  
-```bash
-pip install -r requirements.txt
-```
 
-Если `requirements.txt` отсутствует:  
-```bash
-pip install requests beautifulsoup4 tldextract joblib scikit-learn pandas numpy
-```
 
-venv\Scripts\activate    
-python server/scanner.py --target 
+python scanner.py --target https://example.com \
+                 --scan-type full \
+                 --delay 2.0 \
+                 --max-pages 50 \
+                 --verify-ssl \
+                 --proxy http://proxy:8080 \
+                 --auth user:pass \
+                 --max-retries 5
+```
+### 📦 **4. Запуск**
+### Command Line Arguments
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--target` | Target URL to scan | Required |
+| `--scan-type` | Scan intensity level (fast/full) | fast |
+| `--delay` | Delay between requests in seconds | 1.0 |
+| `--max-pages` | Maximum pages to crawl | 20 |
+| `--user-agent` | Custom User-Agent string | SecScan/1.0 |
+| `--verify-ssl` | Verify SSL certificates | False |
+| `--proxy` | Proxy server URL | None |
+| `--auth` | Basic auth credentials (user:pass) | None |
+| `--max-retries` | Maximum retries for failed requests | 3 |
+
+## Security Features
+
+### HTTP Client Security
+- Rate limiting to prevent server overload
+- Configurable retry mechanism with exponential backoff
+- SSL/TLS verification options
+- Proxy support
+- Authentication support
+
+### Crawler Security
+- URL validation and sanitization
+- Dangerous URL pattern detection
+- Non-content URL filtering
+- Security header analysis
+- CSRF and CAPTCHA detection
+
+### Security Headers Analysis
+- X-Frame-Options
+- X-Content-Type-Options
+- X-XSS-Protection
+- Content-Security-Policy
+- Strict-Transport-Security
+
+## Output
+
+The scanner provides detailed output including:
+- Scan statistics (pages crawled, links found, forms found)
+- Security recommendations
+- Detected vulnerabilities
+- Security headers analysis
+
+Example output:
+```
+Scan completed
+Pages crawled: 15
+Links found: 42
+Forms found: 8
+
+Security Recommendations:
+[1] Missing X-Frame-Options header - Consider adding to prevent clickjacking
+[2] Missing Content-Security-Policy header - Consider implementing CSP
+
+Found 2 vulnerabilities:
+[1] SQL Injection at https://example.com/login
+    Parameter: username
+    Payload: ' OR '1'='1
+    Severity: high
+
+[2] XSS at https://example.com/search
+    Parameter: query
+    Payload: <script>alert(1)</script>
+    Severity: medium
+```
