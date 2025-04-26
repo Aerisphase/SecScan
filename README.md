@@ -6,71 +6,20 @@ markdown
 - pip (менеджер пакетов Python)
 - SSL-сертификаты (для безопасных HTTPS/WSS-соединений)
 
-## Установка
-1. Клонируйте репозиторий:
-```bash
-git clone https://github.com/Aerisphase/SecScan.git
-cd SecScan
-Установите зависимости:
+First, make sure you have all the requirements installed:
+Apply to .env
+Run
+Create a .env file in the root directory with the following content:
+Apply to .env
+To run the server:
+Apply to .env
+Run
+In a new terminal window, to run the web client:
+Apply to .env
+Run
+Once both are running, you can access the web interface by opening your browser and navigating to:
+Apply to .env
 
-bash
-pip install -r requirements.txt
-Настройте переменные окружения:
-
-Создайте файл .env в корне проекта со следующими переменными:
-
-bash
-SECSCAN_API_KEY=your_api_key_here
-SERVER_HOST=localhost
-SERVER_PORT=8000
-SSL_CERT_PATH=path/to/your/cert.pem
-SSL_KEY_PATH=path/to/your/key.pem
-Запуск сервера
-Перейдите в директорию сервера:
-
-bash
-cd src/server
-Запустите сервер:
-
-bash
-python server.py
-Сервер запустится со следующей конфигурацией по умолчанию:
-
-Хост: localhost
-
-Порт: 8000
-
-SSL: Включен (требуются валидные SSL-сертификаты)
-
-API-ключ: Требуется для аутентификации
-
-Настройки сервера
-Измените конфигурацию через файл .env:
-
-SERVER_HOST: Адрес хоста (по умолчанию: localhost)
-
-SERVER_PORT: Номер порта (по умолчанию: 8000)
-
-SSL_CERT_PATH: Путь к SSL-сертификату
-
-SSL_KEY_PATH: Путь к приватному SSL-ключу
-
-SECSCAN_API_KEY: Ваш API-ключ для аутентификации
-
-Запуск клиента
-Веб-интерфейс
-Перейдите в директорию клиента:
-
-bash
-cd src/client
-Запустите веб-сервер клиента:
-
-bash
-python client.py
-Откройте в браузере:
-
-bash
-https://localhost:8002/static/index.html
 Настройки клиента
 Поддерживаемые аргументы командной строки:
 
