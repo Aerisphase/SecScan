@@ -1,97 +1,80 @@
-import requests
-import logging
 import time
-from typing import Optional, Dict, Any
+import logging
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from urllib3.exceptions import InsecureRequestWarning
-import warnings
-
-# Suppress SSL warnings when verify=False
-warnings.filterwarnings('ignore', category=InsecureRequestWarning)
+from typing import Optional, Dict, Any
 
 class HttpClient:
-    def __init__(
-        self,
-        verify_ssl: bool = True,
-        timeout: int = 10,
-        max_retries: int = 3,
-        rate_limit: float = 1.0,  # seconds between requests
-        proxy: Optional[Dict[str, str]] = None,
-        auth: Optional[tuple] = None
-    ):
-        self.verify = verify_ssl
+    def __init__(self, 
+                 verify_ssl: bool = True,
+                 timeout: int = 5,
+                 max_retries: int = 2,
+                 rate_limit: float = 0.5,
+                 proxy: Optional[str] = None,
+                 auth: Optional[Dict[str, str]] = None):
+        self.verify_ssl = verify_ssl
         self.timeout = timeout
+        self.max_retries = max_retries
         self.rate_limit = rate_limit
-        self.last_request_time = 0
         self.proxy = proxy
         self.auth = auth
+        self.last_request_time = 0
+        self.logger = logging.getLogger('HttpClient')
         
         # Configure session with retry strategy
         self.session = requests.Session()
-        
-        # Configure retry strategy
         retry_strategy = Retry(
             total=max_retries,
             backoff_factor=0.5,
             status_forcelist=[500, 502, 503, 504]
         )
-        
-        # Mount the adapter with retry strategy
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         
         # Set default headers
         self.session.headers.update({
-            'User-Agent': 'SecScan/1.0 (+https://github.com/Aerisphase/SecScan)',
+            'User-Agent': 'SecScan/1.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
             'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
         })
 
-    def _enforce_rate_limit(self):
-        """Enforce rate limiting between requests"""
+    def _rate_limit(self):
+        """Implement rate limiting"""
         current_time = time.time()
-        time_since_last_request = current_time - self.last_request_time
-        if time_since_last_request < self.rate_limit:
-            time.sleep(self.rate_limit - time_since_last_request)
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < self.rate_limit:
+            time.sleep(self.rate_limit - time_since_last)
         self.last_request_time = time.time()
 
     def _make_request(self, method: str, url: str, **kwargs) -> Optional[requests.Response]:
-        """Make an HTTP request with rate limiting and error handling"""
+        """Make an HTTP request with error handling"""
         try:
-            self._enforce_rate_limit()
+            self._rate_limit()
             
-            # Merge proxy and auth settings with request kwargs
-            request_kwargs = {
-                'verify': self.verify,
-                'timeout': self.timeout,
-                'proxies': self.proxy,
-                'auth': self.auth,
-                **kwargs
-            }
+            # Set default parameters
+            kwargs.setdefault('timeout', self.timeout)
+            kwargs.setdefault('verify', self.verify_ssl)
+            if self.proxy:
+                kwargs.setdefault('proxies', {'http': self.proxy, 'https': self.proxy})
+            if self.auth:
+                kwargs.setdefault('auth', (self.auth.get('username'), self.auth.get('password')))
             
-            response = self.session.request(method, url, **request_kwargs)
+            response = self.session.request(method, url, **kwargs)
             response.raise_for_status()
             return response
             
-        except requests.exceptions.Timeout:
-            logging.error(f"Timeout occurred for {url}")
-        except requests.exceptions.SSLError:
-            logging.error(f"SSL error occurred for {url}")
-        except requests.exceptions.ConnectionError:
-            logging.error(f"Connection error for {url}")
-        except requests.exceptions.HTTPError as e:
-            logging.error(f"HTTP error occurred for {url}: {e}")
         except requests.exceptions.RequestException as e:
-            logging.error(f"Request failed for {url}: {e}")
-        return None
+            self.logger.error(f"Request failed for {url}: {str(e)}")
+            return None
 
     def get(self, url: str, **kwargs) -> Optional[requests.Response]:
         """Make a GET request"""
         return self._make_request('GET', url, **kwargs)
 
-    def post(self, url: str, **kwargs) -> Optional[requests.Response]:
+    def post(self, url: str, data: Optional[Dict[str, Any]] = None, **kwargs) -> Optional[requests.Response]:
         """Make a POST request"""
-        return self._make_request('POST', url, **kwargs)
+        return self._make_request('POST', url, data=data, **kwargs)

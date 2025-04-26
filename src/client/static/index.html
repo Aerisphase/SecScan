@@ -47,7 +47,26 @@
                             </div>
                             <div class="mb-3">
                                 <label for="userAgent" class="form-label">User Agent</label>
-                                <input type="text" class="form-control" id="userAgent" placeholder="SecScan/1.0 (+https://github.com/Aerisphase/SecScan)">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="userAgent" 
+                                        placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                                        pattern="^[a-zA-Z0-9\s\(\)\.\/\-\:\;\,\+\=\_]+$"
+                                        maxlength="255">
+                                    <button class="btn btn-outline-secondary" type="button" id="randomizeUserAgent">
+                                        <i class="bi bi-shuffle"></i> Randomize
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-shield-lock"></i> For security and anonymity:
+                                        <ul class="mt-1 mb-0">
+                                            <li>Use a common browser User-Agent to blend in</li>
+                                            <li>Avoid using SecScan's default User-Agent</li>
+                                            <li>Randomize User-Agent for each scan</li>
+                                            <li>Don't include personal or identifiable information</li>
+                                        </ul>
+                                    </small>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary">Start Scan</button>
                         </form>

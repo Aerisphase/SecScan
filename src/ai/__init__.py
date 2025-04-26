@@ -1,5 +1,5 @@
 """
-Модуль искусственного интеллекта для сканера уязвимостей
+Artificial Intelligence module for vulnerability scanner
 """
 
 try:
@@ -16,6 +16,6 @@ __all__ = [
 ]
 
 class AIConfig:
-    """Конфигурация AI-модулей"""
+    """AI modules configuration"""
     MODEL_PATH = "models/"
     CONFIDENCE_THRESHOLD = 0.85

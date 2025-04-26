@@ -1,11 +1,11 @@
-from __future__ import annotations  # Должен быть первой строкой
+from __future__ import annotations  # Must be the first line
 
 import sys
 from typing import Dict, List, Set, Optional
 from requests import Session
 from .http_client import HttpClient
 
-# Базовые типы для аннотаций
+# Basic types for annotations
 __all__ = [
     'AdvancedCrawler',
     'XSSScanner',
@@ -15,17 +15,17 @@ __all__ = [
 ]
 
 class CoreError(Exception):
-    """Базовое исключение для ошибок ядра"""
+    """Base exception for core errors"""
     pass
 
 try:
-    # Основные компоненты
+    # Core components
     from .crawler import AdvancedCrawler
 except ImportError as e:
     raise CoreError(f"Critical component missing: {e}") from e
 
 try:
-    # Сканеры (опциональные компоненты)
+    # Scanners (optional components)
     from .scanners.xss import XSSScanner
     from .scanners.sqli import SQLiScanner
     from .scanners.csrf import CSRFScanner
@@ -33,7 +33,7 @@ except ImportError as e:
     import warnings
     warnings.warn(f"Some scanners not available: {e}")
     
-    # Заглушки для отсутствующих сканеров
+    # Stubs for missing scanners
     if 'XSSScanner' not in globals():
         class XSSScanner:  # type: ignore
             def __init__(self, session: Session):
@@ -49,9 +49,9 @@ except ImportError as e:
             def __init__(self, session: Session):
                 raise CoreError("CSRFScanner not implemented")
 
-# Проверка минимально рабочей конфигурации
+# Check minimum working configuration
 def check_imports() -> bool:
-    """Проверяет, что все ключевые компоненты загружены"""
+    """Checks that all key components are loaded"""
     required = ['AdvancedCrawler', 'XSSScanner', 'SQLiScanner']
     return all(component in globals() for component in required)
 

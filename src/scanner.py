@@ -23,7 +23,7 @@ def setup_logging():
     return logging.getLogger('Main')
 
 def parse_args():
-    """Разбор аргументов командной строки"""
+    """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='SecScan - Web Vulnerability Scanner')
     parser.add_argument('--target', required=True, help='URL to scan')
     parser.add_argument('--scan-type', choices=['fast', 'full'], default='fast',
@@ -70,11 +70,11 @@ def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
     return recommendations
 
 def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
-    """Основная функция сканирования"""
+    """Main scanning function"""
     logger = logging.getLogger('Scanner')
     
     try:
-        # Гарантируем правильные типы в конфиге
+        # Ensure correct types in config
         validated_config = {
             'max_pages': int(config.get('max_pages', 20)),
             'delay': float(config.get('delay', 1.0)),
@@ -97,13 +97,13 @@ def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
         # Analyze security headers
         security_recommendations = analyze_security_headers(crawl_data.get('security_headers', {}))
 
-        # Инициализация сканеров
+        # Initialize scanners
         scanners = {
             'xss': XSSScanner(crawler.client),
             'sqli': SQLiScanner(crawler.client)
         }
 
-        # Сбор уязвимостей
+        # Collect vulnerabilities
         vulnerabilities = []
         for scanner_name, scanner in scanners.items():
             try:
@@ -169,7 +169,7 @@ def print_results(results: Dict):
         logger.info("No vulnerabilities found")
 
 def main():
-    """Точка входа в программу"""
+    """Program entry point"""
     logger = setup_logging()
     args = parse_args()
 

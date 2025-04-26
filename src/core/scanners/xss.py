@@ -82,7 +82,8 @@ class XSSScanner:
                                 try:
                                     test_data = {}
                                     for f in form_fields:
-                                        test_data[f] = payload if f == field else 'test'
+                                        field_name = f.get('name') if isinstance(f, dict) else f
+                                        test_data[field_name] = payload if f == field else 'test'
                                     
                                     if method == 'POST':
                                         response = self.client.post(action, data=test_data, timeout=10)

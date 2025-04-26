@@ -3,45 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsCard = document.getElementById('resultsCard');
     const scanStats = document.getElementById('scanStats');
     const vulnerabilities = document.getElementById('vulnerabilities');
-    const logContainer = document.getElementById('logContainer');
 
     // API configuration
     const API_HOST = window.location.hostname;
-    const API_PORT = window.location.port || '8001';  // Default to 8001 if not specified
+    const API_PORT = window.location.port || '8002';
     const API_URL = `https://${API_HOST}:${API_PORT}`;
-    const WS_URL = `wss://${API_HOST}:${API_PORT}`;
-    
-    // WebSocket connection
-    let ws = null;
-    
-    function connectWebSocket() {
-        ws = new WebSocket(`${WS_URL}/ws/logs`);
-        
-        ws.onopen = () => {
-            console.log('WebSocket connected');
-        };
-        
-        ws.onmessage = (event) => {
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.textContent = event.data;
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        };
-        
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-            // Try to reconnect after 5 seconds
-            setTimeout(connectWebSocket, 5000);
-        };
-        
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-    }
-    
-    // Connect WebSocket when page loads
-    connectWebSocket();
     
     // Get API key from localStorage or prompt user
     let API_KEY = localStorage.getItem('secscan_api_key');
@@ -67,16 +33,39 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('secscan_api_key');
         } else if (error.message.includes('SSL')) {
             errorMessage = 'SSL certificate error. Please ensure you trust the server\'s certificate.';
+        } else if (error.message.includes('NetworkError')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (error.message.includes('CORS')) {
+            errorMessage = 'CORS error. Please ensure the server is configured to accept requests from this origin.';
         }
         
         scanStats.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
     }
 
+    // Function to validate User-Agent
+    function validateUserAgent(userAgent) {
+        if (!userAgent) {
+            return true;
+        }
+        
+        // Basic validation for User-Agent
+        const regex = /^[a-zA-Z0-9\s\(\)\.\/\-\:\;\,\+\=\_]+$/;
+        if (!regex.test(userAgent)) {
+            alert('Invalid User-Agent format. Please use only alphanumeric characters and common symbols.');
+            return false;
+        }
+        
+        return true;
+    }
+
+    // Modify the scan form submission to include User-Agent validation
     scanForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Clear previous logs
-        logContainer.innerHTML = '';
+        const userAgent = document.getElementById('userAgent').value.trim();
+        if (!validateUserAgent(userAgent)) {
+            return;
+        }
 
         // Show loading state
         resultsCard.style.display = 'block';
@@ -84,24 +73,27 @@ document.addEventListener('DOMContentLoaded', () => {
         vulnerabilities.innerHTML = '';
 
         try {
-            // Start scan
+            const scanConfig = {
+                target_url: document.getElementById('targetUrl').value,
+                scan_type: document.getElementById('scanType').value,
+                max_pages: parseInt(document.getElementById('maxPages').value),
+                delay: parseFloat(document.getElementById('delay').value),
+                user_agent: userAgent || undefined
+            };
+
             const response = await fetch(`${API_URL}/scan`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': API_KEY
                 },
-                body: JSON.stringify({
-                    target_url: document.getElementById('targetUrl').value,
-                    scan_type: document.getElementById('scanType').value,
-                    max_pages: parseInt(document.getElementById('maxPages').value),
-                    delay: parseFloat(document.getElementById('delay').value),
-                    user_agent: document.getElementById('userAgent').value || undefined
-                })
+                body: JSON.stringify(scanConfig),
+                credentials: 'include'
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
@@ -142,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vulnerabilities.innerHTML = `
                 <div class="vulnerabilities-list">
                     ${result.vulnerabilities.map((vuln, index) => `
-                        <div class="vulnerability-item">
+                        <div class="vulnerability-item ${vuln.severity.toLowerCase()}">
                             <h5>${index + 1}. ${vuln.type} Vulnerability</h5>
                             <p><strong>URL:</strong> ${vuln.url}</p>
                             <p><strong>Parameter:</strong> ${vuln.param}</p>

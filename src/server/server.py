@@ -15,13 +15,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 import uvicorn
-from src.core.scanners import SQLiScanner, XSSScanner
+
+# Add the project root directory to Python path
+project_root = str(Path(__file__).parent.parent.parent)
+sys.path.append(project_root)
+
+from src.core.scanners.xss import XSSScanner
+from src.core.scanners.sqli import SQLiScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG for more detailed logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('server.log', encoding='utf-8'),
@@ -90,16 +96,21 @@ class LogManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        self.logger.info("New WebSocket connection established")
+        self.logger.info(f"New WebSocket connection established. Total connections: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-        self.logger.info("WebSocket connection closed")
+        self.logger.info(f"WebSocket connection closed. Remaining connections: {len(self.active_connections)}")
 
     async def broadcast(self, message: str):
+        if not self.active_connections:
+            self.logger.warning("No active WebSocket connections to broadcast to")
+            return
+            
         for connection in self.active_connections:
             try:
                 await connection.send_text(message)
+                self.logger.debug(f"Broadcasted message: {message}")
             except Exception as e:
                 self.logger.error(f"Error broadcasting message: {str(e)}")
                 self.disconnect(connection)
@@ -193,12 +204,24 @@ async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
 # Add WebSocket endpoint
 @app.websocket("/ws/logs")
 async def websocket_endpoint(websocket: WebSocket):
-    await log_manager.connect(websocket)
+    logger.info("New WebSocket connection attempt")
     try:
+        await log_manager.connect(websocket)
         while True:
-            # Keep connection alive
-            await websocket.receive_text()
-    except WebSocketDisconnect:
+            try:
+                data = await websocket.receive_text()
+                logger.debug(f"Received message: {data}")
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except WebSocketDisconnect:
+                logger.info("WebSocket client disconnected")
+                break
+            except Exception as e:
+                logger.error(f"WebSocket error: {str(e)}")
+                break
+    except Exception as e:
+        logger.error(f"WebSocket connection error: {str(e)}")
+    finally:
         log_manager.disconnect(websocket)
 
 if __name__ == "__main__":

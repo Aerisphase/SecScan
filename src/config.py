@@ -19,13 +19,13 @@ SSL_CERT_PATH = os.getenv("SSL_CERT_PATH")
 SSL_KEY_PATH = os.getenv("SSL_KEY_PATH")
 
 class Config:
-    # Настройки краулера
+    # Crawler settings
     CRAWLER_DELAY = 1.0  # seconds
     MAX_PAGES = 100
     
-    # Настройки Telegram
+    # Telegram settings
     TELEGRAM_TOKEN = TELEGRAM_TOKEN
     TELEGRAM_CHAT_ID = TELEGRAM_CHAT_ID
     
-    # Пути к моделям ML
+    # ML model paths
     FP_FILTER_MODEL = "models/fp_filter.pkl"

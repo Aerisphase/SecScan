@@ -2,7 +2,7 @@ from urllib.parse import urlparse
 import tldextract
 
 def normalize_url(url: str) -> str:
-    """Нормализация URL"""
+    """Normalize URL"""
     return url.split('#')[0].split('?')[0].rstrip('/')
 
 def is_same_domain(url1: str, url2: str) -> bool:
