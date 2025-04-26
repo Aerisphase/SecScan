@@ -1,0 +1,67 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    border: none;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+
+.vulnerability-item {
+    border-left: 4px solid #dc3545;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 4px;
+}
+
+.vulnerability-item.high {
+    border-left-color: #dc3545;
+}
+
+.vulnerability-item.medium {
+    border-left-color: #ffc107;
+}
+
+.vulnerability-item.low {
+    border-left-color: #28a745;
+}
+
+.stats-card {
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.stats-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.stats-item:last-child {
+    border-bottom: none;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+} 

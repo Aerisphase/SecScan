@@ -1,4 +1,92 @@
-# SecScan
+# SecScan - Web Vulnerability Scanner
+
+SecScan is a powerful web vulnerability scanner that helps identify security issues in web applications. The tool is built with a client-server architecture to provide secure and scalable scanning capabilities.
+
+## Features
+
+- SQL Injection detection
+- Cross-Site Scripting (XSS) detection
+- Advanced crawling capabilities
+- Secure client-server communication
+- API key authentication
+- HTTPS/TLS encryption
+- Configurable scan parameters
+
+## Architecture
+
+SecScan is built with a client-server architecture:
+
+- **Server**: Handles scan requests, manages scan jobs, and stores results
+- **Client**: Provides a user interface and communicates with the server
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Aerisphase/SecScan.git
+cd SecScan
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Generate SSL certificates for secure communication:
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+```
+
+## Usage
+
+### Starting the Server
+
+1. Set the API key (optional, a random key will be generated if not set):
+```bash
+export SECSCAN_API_KEY="your-secret-key"
+```
+
+2. Start the server:
+```bash
+python src/server/server.py
+```
+
+The server will start on `https://localhost:8000` with SSL/TLS encryption.
+
+### Using the Client
+
+1. Run a scan:
+```bash
+python src/client/client.py --target https://example.com --api-key your-secret-key
+```
+
+Additional options:
+- `--server`: Server URL (default: https://localhost:8000)
+- `--scan-type`: Scan intensity (fast/full)
+- `--delay`: Delay between requests
+- `--max-pages`: Maximum pages to crawl
+- `--user-agent`: Custom User-Agent string
+
+## Security Considerations
+
+- All communication between client and server is encrypted using HTTPS/TLS
+- API key authentication is required for all requests
+- The server should be deployed in a secure environment
+- Regular security audits are recommended
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 1. Назначение проекта
 Разработка автоматизированного сканера уязвимостей с элементами искусственного интеллекта (AI/ML) для:

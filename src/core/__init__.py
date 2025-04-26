@@ -54,3 +54,5 @@ def check_imports() -> bool:
     """Проверяет, что все ключевые компоненты загружены"""
     required = ['AdvancedCrawler', 'XSSScanner', 'SQLiScanner']
     return all(component in globals() for component in required)
+
+# This file makes the core directory a Python package
