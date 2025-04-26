@@ -1,102 +1,150 @@
-SecScan Documentation
-Prerequisites
-Python 3.8 or higher
-pip (Python package manager)
-SSL certificates (for secure HTTPS/WSS connections)
-Installation
-Clone the repository:
+```markdown
+# SecScan Documentation
+
+## Prerequisites
+- Python 3.8 or higher
+- pip (Python package manager)
+- SSL certificates (for secure HTTPS/WSS connections)
+
+## Installation
+1. Clone the repository:
+```bash
 Apply to crawler.py
 Run
-Install dependencies:
+```
+2. Install dependencies:
+```bash
 Apply to crawler.py
 Run
-Set up environment variables:
-Create a .env file in the project root with the following variables:
-Apply to crawler.py
-Launching the Server
-Navigate to the server directory:
-Apply to crawler.py
-Run
-Start the server:
+```
+3. Set up environment variables:
+   - Create a `.env` file in the project root with the following variables:
+```bash
 Apply to crawler.py
 Run
+```
+
+## Launching the Server
+1. Navigate to the server directory:
+```bash
+Apply to crawler.py
+Run
+```
+2. Start the server:
+```bash
+Apply to crawler.py
+Run
+```
+
 The server will start with the following default configuration:
-Host: localhost
-Port: 8000
-SSL: Enabled (requires valid SSL certificates)
-API Key: Required for authentication
-Server Configuration Options
-You can modify the server configuration by editing the .env file:
-SERVER_HOST: Change the host address (default: localhost)
-SERVER_PORT: Change the port number (default: 8000)
-SSL_CERT_PATH: Path to your SSL certificate
-SSL_KEY_PATH: Path to your SSL private key
-SECSCAN_API_KEY: Your API key for authentication
-Launching the Client
-Web Interface
-Navigate to the client directory:
+- **Host**: `localhost`
+- **Port**: `8000`
+- **SSL**: Enabled (requires valid SSL certificates)
+- **API Key**: Required for authentication
+
+### Server Configuration Options
+Modify the server configuration by editing the `.env` file:
+- `SERVER_HOST`: Change the host address (default: `localhost`)
+- `SERVER_PORT`: Change the port number (default: `8000`)
+- `SSL_CERT_PATH`: Path to your SSL certificate
+- `SSL_KEY_PATH`: Path to your SSL private key
+- `SECSCAN_API_KEY`: Your API key for authentication
+
+## Launching the Client
+
+### Web Interface
+1. Navigate to the client directory:
+```bash
 Apply to crawler.py
 Run
-Start the client web server:
+```
+2. Start the client web server:
+```bash
 Apply to crawler.py
 Run
-Open your web browser and navigate to:
+```
+3. Open your web browser and navigate to:
+```bash
 Apply to crawler.py
-Command Line Interface
-Navigate to the project root:
-Apply to crawler.py
-Run
-Run the scanner with required parameters:
-Apply to crawler.py
-Run
-Client Configuration Options
-The client supports the following command-line arguments:
---target: Target URL to scan (required)
---server: Server URL (default: https://localhost:8000)
---api-key: API key for authentication (required)
---scan-type: Scan intensity level (choices: fast, full, default: fast)
---delay: Delay between requests in seconds (default: 1.0)
---max-pages: Maximum pages to crawl (default: 20)
---user-agent: Custom User-Agent string
---verify-ssl: Verify SSL certificates (default: true)
---proxy: Proxy server URL
---auth: Basic auth credentials (user:pass)
---max-retries: Maximum number of retries for failed requests (default: 3)
-Example Usage
-Basic Scan
+```
+
+### Command Line Interface
+1. Navigate to the project root:
+```bash
 Apply to crawler.py
 Run
-Full Scan with Custom Settings
+```
+2. Run the scanner with required parameters:
+```bash
 Apply to crawler.py
 Run
-Using Proxy
+```
+
+### Client Configuration Options
+Supported command-line arguments:
+- `--target`: Target URL to scan (required)
+- `--server`: Server URL (default: `https://localhost:8000`)
+- `--api-key`: API key for authentication (required)
+- `--scan-type`: Scan intensity level (choices: `fast`, `full`, default: `fast`)
+- `--delay`: Delay between requests in seconds (default: `1.0`)
+- `--max-pages`: Maximum pages to crawl (default: `20`)
+- `--user-agent`: Custom User-Agent string
+- `--verify-ssl`: Verify SSL certificates (default: `true`)
+- `--proxy`: Proxy server URL
+- `--auth`: Basic auth credentials (`user:pass`)
+- `--max-retries`: Maximum retries for failed requests (default: `3`)
+
+## Example Usage
+
+### Basic Scan
+```bash
 Apply to crawler.py
 Run
-Security Considerations
-Always use HTTPS/WSS for secure communication
-Keep your API key secure and never share it
-Use strong SSL certificates
-Consider using a proxy for anonymity
-Monitor server logs for suspicious activity
-Troubleshooting
-SSL Certificate Errors
-Ensure your SSL certificates are valid and properly configured
-Check the paths in your .env file
-Verify certificate permissions
-Connection Issues
-Check if the server is running
-Verify the server URL and port
-Ensure your API key is correct
-Check firewall settings
-Scan Failures
-Verify the target URL is accessible
-Check network connectivity
-Review server logs for error messages
-Adjust scan parameters if needed
-Logging
-Server logs are stored in server.log
-Client logs are stored in client.log
-Scan results are displayed in the console and can be saved to a file
+```
+
+### Full Scan with Custom Settings
+```bash
+Apply to crawler.py
+Run
+```
+
+### Using Proxy
+```bash
+Apply to crawler.py
+Run
+```
+
+## Security Considerations
+- Always use HTTPS/WSS for secure communication
+- Keep your API key secure and never share it
+- Use strong SSL certificates
+- Consider using a proxy for anonymity
+- Monitor server logs for suspicious activity
+
+## Troubleshooting
+
+### SSL Certificate Errors
+- Ensure SSL certificates are valid and properly configured
+- Check paths in `.env` file
+- Verify certificate permissions
+
+### Connection Issues
+- Check if the server is running
+- Verify server URL and port
+- Ensure API key is correct
+- Check firewall settings
+
+### Scan Failures
+- Verify target URL accessibility
+- Check network connectivity
+- Review server logs for error messages
+- Adjust scan parameters if needed
+
+## Logging
+- Server logs: `server.log`
+- Client logs: `client.log`
+- Scan results are displayed in the console and can be saved to a file
+```
 
 ## 1. Назначение проекта
 Разработка автоматизированного сканера уязвимостей с элементами искусственного интеллекта (AI/ML) для:
