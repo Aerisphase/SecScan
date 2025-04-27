@@ -541,171 +541,114 @@ body {
     color: var(--text-primary);
 }
 
-/* AI Recommendations Styling */
+/* Recommendation styles */
 .recommendations {
-    background-color: #f8f9fa;
-    border-radius: 0.5rem;
+    background-color: rgba(74, 107, 255, 0.1);
+    border-radius: 8px;
     padding: 1rem;
     margin-top: 1rem;
 }
 
 .recommendations h6 {
-    color: #0d6efd;
+    color: var(--primary-color);
     margin-bottom: 0.75rem;
 }
 
 .recommendations .list-group-item {
-    border-left: 3px solid #0d6efd;
-    margin-bottom: 0.5rem;
-    transition: all 0.3s ease;
+    background-color: transparent;
+    border-color: rgba(74, 107, 255, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
 }
 
-.recommendations .list-group-item:hover {
-    background-color: #e9ecef;
-    transform: translateX(5px);
+.recommendations .list-group-item i {
+    color: var(--success-color);
 }
 
-/* Confidence Score Styling */
-.progress {
-    height: 1.5rem;
-    background-color: #e9ecef;
-    border-radius: 0.25rem;
-    margin-top: 0.5rem;
-}
-
-.progress-bar {
-    background-color: #0d6efd;
-    transition: width 0.6s ease;
-}
-
-/* Preventive Measures Styling */
+/* Preventive measures styles */
 .preventive-measures {
-    background-color: #e8f5e9;
-    border-radius: 0.5rem;
+    background-color: rgba(40, 167, 69, 0.1);
+    border-radius: 8px;
     padding: 1rem;
-    margin-top: 1.5rem;
 }
 
 .preventive-measures h5 {
-    color: #198754;
+    color: var(--success-color);
     margin-bottom: 0.75rem;
 }
 
 .preventive-measures .list-group-item {
-    border-left: 3px solid #198754;
-    margin-bottom: 0.5rem;
-    transition: all 0.3s ease;
+    background-color: transparent;
+    border-color: rgba(40, 167, 69, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
 }
 
-.preventive-measures .list-group-item:hover {
-    background-color: #d1e7dd;
-    transform: translateX(5px);
+.preventive-measures .list-group-item i {
+    color: var(--success-color);
 }
 
-/* Vulnerability Item Styling */
+/* Vulnerability item enhancements */
 .vulnerability-item {
-    border-radius: 0.5rem;
+    border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-}
-
-.vulnerability-item:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    transform: translateY(-2px);
-}
-
-.vulnerability-item.critical {
-    border-left: 4px solid #dc3545;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
 }
 
 .vulnerability-item.high {
-    border-left: 4px solid #fd7e14;
+    border-left: 4px solid var(--danger-color);
 }
 
 .vulnerability-item.medium {
-    border-left: 4px solid #ffc107;
+    border-left: 4px solid var(--warning-color);
 }
 
 .vulnerability-item.low {
-    border-left: 4px solid #0dcaf0;
+    border-left: 4px solid var(--info-color);
 }
 
 .vulnerability-details {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
     margin-top: 0.5rem;
 }
 
 .vulnerability-details p {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
-.severity {
+.vulnerability-details .severity {
     font-weight: bold;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
 }
 
-.severity.critical {
-    background-color: #dc3545;
-    color: white;
+.vulnerability-details .severity.high {
+    color: var(--danger-color);
 }
 
-.severity.high {
-    background-color: #fd7e14;
-    color: white;
+.vulnerability-details .severity.medium {
+    color: var(--warning-color);
 }
 
-.severity.medium {
-    background-color: #ffc107;
-    color: black;
+.vulnerability-details .severity.low {
+    color: var(--info-color);
 }
 
-.severity.low {
-    background-color: #0dcaf0;
-    color: white;
-}
-
-/* Exploit-DB Links Styling */
-.exploit-link {
+/* Confidence and prevention score indicators */
+.vulnerability-details .confidence,
+.vulnerability-details .prevention-score {
     display: inline-block;
-    background-color: #1a1a1a;
-    color: #ff6b6b;
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    text-decoration: none;
-    margin: 0.5rem 0;
-    transition: all 0.3s ease;
-    border: 1px solid #ff6b6b;
+    font-size: 0.875rem;
+    margin-left: 0.5rem;
 }
 
-.exploit-link:hover {
-    background-color: #ff6b6b;
-    color: #1a1a1a;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+.vulnerability-details .confidence {
+    background-color: rgba(74, 107, 255, 0.2);
+    color: var(--primary-color);
 }
 
-/* Update recommendations list to handle links */
-.recommendations .list-group-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.recommendations .list-group-item i {
-    margin-right: 0.5rem;
-    color: #0d6efd;
-}
-
-/* Add warning icon for Exploit-DB links */
-.exploit-link::before {
-    content: '\f071';
-    font-family: 'Font Awesome 5 Free';
-    font-weight: 900;
-    margin-right: 0.5rem;
+.vulnerability-details .prevention-score {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: var(--success-color);
 } 

@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import joblib
 import os
 from pathlib import Path
-from .vulnerability_analyzer import VulnerabilityAnalyzer
 
 class VulnerabilityRecommender:
     def __init__(self, model_path: Optional[str] = None):
@@ -14,7 +13,6 @@ class VulnerabilityRecommender:
         self.vectorizer = TfidfVectorizer()
         self.recommendations_db = self._load_recommendations_db()
         self.model = self._load_model() if model_path else None
-        self.analyzer = VulnerabilityAnalyzer()
         
     def _load_recommendations_db(self) -> pd.DataFrame:
         """Load the recommendations database"""
@@ -72,54 +70,95 @@ class VulnerabilityRecommender:
         if self.model_path:
             joblib.dump(self.model, self.model_path)
     
-    def get_recommendations(self, vulnerability_type: str, context: str = '') -> Tuple[List[str], float]:
-        """
-        Get AI-generated recommendations for preventing a specific vulnerability type.
-        
-        Args:
-            vulnerability_type: The type of vulnerability (e.g., 'SQL Injection', 'XSS')
-            context: Additional context about the vulnerability (optional)
+    def get_recommendations(self, vulnerability: Dict) -> Dict:
+        """Get recommendations for a specific vulnerability"""
+        try:
+            # Extract vulnerability features
+            vuln_type = vulnerability.get('type', '')
+            description = vulnerability.get('description', '')
             
-        Returns:
-            Tuple containing:
-            - List of recommendations
-            - Confidence score (0.0 to 1.0)
-        """
-        return self.analyzer.get_recommendations(vulnerability_type, context)
+            # Find exact match in database
+            exact_match = self.recommendations_db[
+                self.recommendations_db['vulnerability_type'].str.lower() == vuln_type.lower()
+            ]
+            
+            if not exact_match.empty:
+                return {
+                    'recommendations': exact_match['recommendations'].iloc[0].split('\n'),
+                    'severity': exact_match['severity'].iloc[0],
+                    'prevention_score': exact_match['prevention_score'].iloc[0],
+                    'confidence': 1.0
+                }
+            
+            # If no exact match, use similarity-based recommendations
+            if self.model is not None:
+                # Convert vulnerability description to TF-IDF vector
+                vuln_vector = self.vectorizer.transform([description])
+                
+                # Calculate similarity scores
+                similarities = cosine_similarity(vuln_vector, self.model)
+                
+                # Get top 3 most similar vulnerabilities
+                top_indices = np.argsort(similarities[0])[-3:][::-1]
+                
+                recommendations = []
+                for idx in top_indices:
+                    rec = self.recommendations_db.iloc[idx]
+                    recommendations.extend(rec['recommendations'].split('\n'))
+                
+                return {
+                    'recommendations': list(set(recommendations)),  # Remove duplicates
+                    'severity': self.recommendations_db.iloc[top_indices[0]]['severity'],
+                    'prevention_score': self.recommendations_db.iloc[top_indices[0]]['prevention_score'],
+                    'confidence': float(similarities[0][top_indices[0]])
+                }
+            
+            # Fallback to generic recommendations
+            return {
+                'recommendations': [
+                    'Implement proper input validation',
+                    'Use secure coding practices',
+                    'Follow OWASP guidelines',
+                    'Regular security testing'
+                ],
+                'severity': 'unknown',
+                'prevention_score': 0.75,
+                'confidence': 0.0
+            }
+            
+        except Exception as e:
+            print(f"Error generating recommendations: {str(e)}")
+            return {
+                'recommendations': ['Error generating recommendations'],
+                'severity': 'unknown',
+                'prevention_score': 0.0,
+                'confidence': 0.0
+            }
     
     def get_preventive_measures(self, code_context: str) -> List[str]:
-        """
-        Get preventive measures based on code context.
-        
-        Args:
-            code_context: The code context to analyze
+        """Get preventive measures based on code context"""
+        try:
+            # Extract keywords from code context
+            keywords = self._extract_keywords(code_context)
             
-        Returns:
-            List of preventive measures
-        """
-        # This is a simplified version - in production, you'd want to analyze the code
-        # using more sophisticated techniques
-        measures = []
-        
-        if 'sql' in code_context.lower():
-            measures.extend([
-                'Use parameterized queries',
-                'Implement input validation',
-                'Apply principle of least privilege'
-            ])
+            # Find relevant recommendations based on keywords
+            relevant_recs = []
+            for _, row in self.recommendations_db.iterrows():
+                if any(keyword in row['description'].lower() for keyword in keywords):
+                    relevant_recs.extend(row['recommendations'].split('\n'))
             
-        if 'html' in code_context.lower() or 'javascript' in code_context.lower():
-            measures.extend([
-                'Implement Content Security Policy',
-                'Use output encoding',
-                'Validate user input'
-            ])
+            return list(set(relevant_recs))  # Remove duplicates
             
-        if 'form' in code_context.lower() or 'post' in code_context.lower():
-            measures.extend([
-                'Implement CSRF tokens',
-                'Use SameSite cookie attribute',
-                'Verify Origin headers'
-            ])
-            
-        return measures 
+        except Exception as e:
+            print(f"Error generating preventive measures: {str(e)}")
+            return ['Error generating preventive measures']
+    
+    def _extract_keywords(self, code_context: str) -> List[str]:
+        """Extract relevant keywords from code context"""
+        # Basic keyword extraction - can be enhanced with NLP
+        keywords = [
+            'sql', 'query', 'database', 'input', 'user', 'file',
+            'upload', 'command', 'path', 'authentication', 'session',
+            'cookie', 'header', 'request', 'response', 'xml', 'json'
+        ]
+        return [k for k in keywords if k in code_context.lower()] 
