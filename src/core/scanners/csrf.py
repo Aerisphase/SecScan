@@ -1,5 +1,4 @@
 import logging
-from ..http_client import HttpClient
 from typing import List, Dict, Optional
 import re
 from urllib.parse import urlparse, urljoin
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 class CSRFScanner:
     def __init__(self, client=None):
         # Инициализация HTTP клиента
-        self.client = client if client else HttpClient()
+        self.client = client
         
         # Список заголовков, которые могут указывать на защиту от CSRF
         self.csrf_headers = [
@@ -51,22 +50,22 @@ class CSRFScanner:
             r'<form[^>]*method=["\']patch["\'][^>]*>'
         ]
 
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
-        # Основной метод сканирования, который проверяет CSRF уязвимости
+    async def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+        """Основной метод сканирования, который проверяет CSRF уязвимости"""
         vulnerabilities = []
         
         try:
             # Проверка заголовков ответа
-            header_vulns = self._check_headers(url)
+            header_vulns = await self._check_headers(url)
             vulnerabilities.extend(header_vulns)
             
             # Проверка форм
             if forms:
-                form_vulns = self._check_forms(url, forms)
+                form_vulns = await self._check_forms(url, forms)
                 vulnerabilities.extend(form_vulns)
             
             # Проверка HTML-страницы
-            html_vulns = self._check_html(url)
+            html_vulns = await self._check_html(url)
             vulnerabilities.extend(html_vulns)
             
         except Exception as e:
@@ -74,39 +73,36 @@ class CSRFScanner:
         
         return vulnerabilities
 
-    def _check_headers(self, url: str) -> List[Dict]:
-        # Проверка заголовков ответа на наличие защиты от CSRF
+    async def _check_headers(self, url: str) -> List[Dict]:
+        """Проверка заголовков ответа на наличие защиты от CSRF"""
         vulnerabilities = []
         try:
             # Отправка запроса
-            response = self.client.get(url, timeout=10)
-            if not response:
-                return vulnerabilities
+            response = await self.client.get(url)
             
-            # Проверка наличия CSRF-заголовков
-            csrf_headers_found = []
-            for header in self.csrf_headers:
-                if header in response.headers:
-                    csrf_headers_found.append(header)
-            
-            if not csrf_headers_found:
-                vulnerabilities.append({
-                    'type': 'CSRF',
-                    'url': url,
-                    'payload': 'Missing CSRF headers',
-                    'evidence': 'No CSRF protection headers found in response',
-                    'severity': 'medium',
-                    'param': 'Headers',
-                    'method': 'GET'
-                })
+            if response['status_code'] == 200:
+                # Проверка наличия CSRF-заголовков
+                csrf_headers_found = []
+                for header in self.csrf_headers:
+                    if header in response['headers']:
+                        csrf_headers_found.append(header)
+                
+                if not csrf_headers_found:
+                    vulnerabilities.append({
+                        'type': 'CSRF',
+                        'url': url,
+                        'payload': 'Missing CSRF headers',
+                        'evidence': 'No CSRF protection headers found in response',
+                        'severity': 'medium'
+                    })
         
         except Exception as e:
             logger.error(f"Headers check error: {str(e)}")
         
         return vulnerabilities
 
-    def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
-        # Проверка форм на уязвимость к CSRF
+    async def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
+        """Проверка форм на уязвимость к CSRF"""
         vulnerabilities = []
         try:
             for form in forms:
@@ -133,8 +129,7 @@ class CSRFScanner:
                         'payload': 'Missing CSRF token',
                         'evidence': f'Form with method {method} does not contain CSRF token',
                         'severity': 'high',
-                        'param': 'Form Fields',
-                        'method': method
+                        'form_method': method
                     })
         
         except Exception as e:
@@ -142,37 +137,34 @@ class CSRFScanner:
         
         return vulnerabilities
 
-    def _check_html(self, url: str) -> List[Dict]:
-        # Проверка HTML-страницы на уязвимость к CSRF
+    async def _check_html(self, url: str) -> List[Dict]:
+        """Проверка HTML-страницы на уязвимость к CSRF"""
         vulnerabilities = []
         try:
             # Отправка запроса
-            response = self.client.get(url, timeout=10)
-            if not response:
-                return vulnerabilities
+            response = await self.client.get(url)
             
-            # Поиск форм, изменяющих состояние
-            form_matches = re.finditer('|'.join(self.form_patterns), response.text, re.IGNORECASE)
-            for match in form_matches:
-                form_html = match.group(0)
-                
-                # Проверка наличия CSRF-токена в форме
-                has_csrf_token = False
-                for pattern in self.csrf_patterns:
-                    if re.search(pattern, form_html, re.IGNORECASE):
-                        has_csrf_token = True
-                        break
-                
-                if not has_csrf_token:
-                    vulnerabilities.append({
-                        'type': 'CSRF',
-                        'url': url,
-                        'payload': 'Missing CSRF token in form',
-                        'evidence': 'Form that modifies state does not contain CSRF token',
-                        'severity': 'high',
-                        'param': 'HTML Form',
-                        'method': 'GET'
-                    })
+            if response['status_code'] == 200:
+                # Поиск форм, изменяющих состояние
+                form_matches = re.finditer('|'.join(self.form_patterns), response['text'], re.IGNORECASE)
+                for match in form_matches:
+                    form_html = match.group(0)
+                    
+                    # Проверка наличия CSRF-токена в форме
+                    has_csrf_token = False
+                    for pattern in self.csrf_patterns:
+                        if re.search(pattern, form_html, re.IGNORECASE):
+                            has_csrf_token = True
+                            break
+                    
+                    if not has_csrf_token:
+                        vulnerabilities.append({
+                            'type': 'CSRF',
+                            'url': url,
+                            'payload': 'Missing CSRF token in form',
+                            'evidence': 'Form that modifies state does not contain CSRF token',
+                            'severity': 'high'
+                        })
         
         except Exception as e:
             logger.error(f"HTML check error: {str(e)}")

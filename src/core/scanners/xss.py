@@ -1,5 +1,4 @@
 import logging
-from ..http_client import HttpClient
 from typing import List, Dict, Optional
 import re
 from urllib.parse import urlparse, parse_qs, urlencode
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 class XSSScanner:
     def __init__(self, client=None):
         # Инициализация HTTP клиента
-        self.client = client if client else HttpClient()
+        self.client = client
         
         # Список полезных нагрузок для тестирования XSS уязвимостей
         self.payloads = [
@@ -53,92 +52,74 @@ class XSSScanner:
             r'<body[^>]*>',
             r'<input[^>]*>',
             r'<div[^>]*>',
-            r'<a[^>]*>',
-            r'javascript:',
-            r'data:text/html',
-            r'vbscript:'
+            r'<a[^>]*>'
         ]
 
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
-        # Основной метод сканирования, который проверяет XSS уязвимости
+    async def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+        """Основной метод сканирования, который проверяет XSS уязвимости"""
         vulnerabilities = []
         
         try:
             # Проверка параметров URL
-            url_vulns = self._check_url_params(url)
+            url_vulns = await self._check_url_params(url)
             vulnerabilities.extend(url_vulns)
             
             # Проверка форм
             if forms:
-                form_vulns = self._check_forms(url, forms)
+                form_vulns = await self._check_forms(url, forms)
                 vulnerabilities.extend(form_vulns)
-            
+                
         except Exception as e:
             logger.error(f"XSS scan error: {str(e)}")
         
         return vulnerabilities
 
-    def _check_url_params(self, url: str) -> List[Dict]:
-        # Проверка параметров URL на XSS уязвимости
+    async def _check_url_params(self, url: str) -> List[Dict]:
+        """Проверка параметров URL на XSS уязвимости"""
         vulnerabilities = []
         try:
-            # Парсинг URL для получения параметров
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
             
-            # Проверка каждого параметра
             for param, values in params.items():
-                for value in values:
-                    for payload in self.payloads:
-                        try:
-                            # Создание URL с внедренной полезной нагрузкой
-                            modified_params = params.copy()
-                            modified_params[param] = [payload]
-                            modified_query = urlencode(modified_params, doseq=True)
-                            modified_url = parsed_url._replace(query=modified_query).geturl()
+                for payload in self.payloads:
+                    # Создаем новый URL с полезной нагрузкой
+                    test_params = params.copy()
+                    test_params[param] = [payload]
+                    test_url = parsed_url._replace(query=urlencode(test_params, doseq=True)).geturl()
+                    
+                    # Отправляем запрос
+                    response = await self.client.get(test_url)
+                    
+                    if response['status_code'] == 200:
+                        if self._is_vulnerable(response['text'], payload):
+                            vulnerabilities.append({
+                                'type': 'XSS',
+                                'url': test_url,
+                                'parameter': param,
+                                'payload': payload,
+                                'evidence': self._get_evidence(response['text'], payload)
+                            })
                             
-                            # Отправка запроса
-                            response = self.client.get(modified_url, timeout=10)
-                            if not response:
-                                continue
-                            
-                            # Проверка на уязвимость
-                            if self._is_vulnerable(response.text, payload):
-                                vulnerabilities.append({
-                                    'type': 'XSS',
-                                    'url': modified_url,
-                                    'payload': payload,
-                                    'evidence': self._get_evidence(response.text, payload),
-                                    'severity': 'high',
-                                    'param': param,
-                                    'method': 'GET'
-                                })
-                                break
-                        
-                        except Exception as e:
-                            logger.error(f"URL parameter check error for {param}: {str(e)}")
-        
         except Exception as e:
-            logger.error(f"URL parameters check error: {str(e)}")
-        
+            logger.error(f"URL params check error: {str(e)}")
+            
         return vulnerabilities
 
-    def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
-        # Проверка форм на XSS уязвимости
+    async def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
+        """Проверка форм на XSS уязвимости"""
         vulnerabilities = []
         try:
             for form in forms:
-                # Получение метода и действия формы
                 method = form.get('method', 'GET').upper()
                 action = form.get('action', url)
                 
-                # Проверка каждого поля формы
                 for field in form.get('fields', []):
                     field_name = field.get('name')
                     field_type = field.get('type', 'text')
                     
                     # Пропуск полей, не подходящих для XSS
-                    if field_type not in ['text', 'textarea', 'hidden', 'search', 'email', 'url']:
+                    if field_type not in ['text', 'textarea', 'hidden']:
                         continue
                     
                     for payload in self.payloads:
@@ -153,77 +134,79 @@ class XSSScanner:
                             
                             # Отправка запроса
                             if method == 'GET':
-                                response = self.client.get(action, params=form_data, timeout=10)
+                                response = await self.client.get(action, params=form_data)
                             else:
-                                response = self.client.post(action, data=form_data, timeout=10)
+                                response = await self.client.post(action, data=form_data)
                             
-                            if not response:
-                                continue
-                            
-                            # Проверка на уязвимость
-                            if self._is_vulnerable(response.text, payload):
-                                vulnerabilities.append({
-                                    'type': 'XSS',
-                                    'url': action,
-                                    'payload': payload,
-                                    'evidence': self._get_evidence(response.text, payload),
-                                    'severity': 'high',
-                                    'param': field_name,
-                                    'method': method
-                                })
-                                break
-                        
+                            if response['status_code'] == 200:
+                                if self._is_vulnerable(response['text'], payload):
+                                    vulnerabilities.append({
+                                        'type': 'XSS',
+                                        'url': action,
+                                        'parameter': field_name,
+                                        'payload': payload,
+                                        'evidence': self._get_evidence(response['text'], payload),
+                                        'form_method': method
+                                    })
+                                    
                         except Exception as e:
-                            logger.error(f"Form field check error for {field_name}: {str(e)}")
-        
+                            logger.error(f"Form check error for {field_name}: {str(e)}")
+                            
         except Exception as e:
             logger.error(f"Forms check error: {str(e)}")
-        
+            
         return vulnerabilities
 
     def _is_vulnerable(self, response_text: str, payload: str) -> bool:
-        # Проверка, является ли ответ уязвимым к XSS
+        """Проверка, является ли ответ уязвимым к XSS"""
         try:
-            # Проверка отражения полезной нагрузки
+            # Проверка на отражение полезной нагрузки
             if payload in response_text:
                 return True
-            
-            # Проверка отражения с кодировкой
+                
+            # Проверка на отражение с кодировкой
             encoded_payload = payload.encode('utf-8').hex()
             if encoded_payload in response_text:
                 return True
-            
-            # Проверка паттернов отражения
-            for pattern in self.reflection_patterns:
-                if re.search(pattern, response_text, re.IGNORECASE):
-                    return True
-            
-            return False
-        
+                
+            # Проверка на отражение с HTML-кодировкой
+            html_encoded = payload.replace('<', '&lt;').replace('>', '&gt;')
+            if html_encoded in response_text:
+                return True
+                
+            # Проверка на отражение с URL-кодировкой
+            url_encoded = payload.replace(' ', '%20').replace('<', '%3C').replace('>', '%3E')
+            if url_encoded in response_text:
+                return True
+                
         except Exception as e:
             logger.error(f"Vulnerability check error: {str(e)}")
-            return False
+            
+        return False
 
     def _get_evidence(self, response_text: str, payload: str) -> str:
-        # Получение доказательства уязвимости
+        """Получение доказательства уязвимости"""
         try:
-            # Поиск отраженной полезной нагрузки
+            # Поиск отражения полезной нагрузки
             if payload in response_text:
                 return f"Payload '{payload}' was reflected in the response"
-            
+                
             # Поиск отражения с кодировкой
             encoded_payload = payload.encode('utf-8').hex()
             if encoded_payload in response_text:
                 return f"Encoded payload '{encoded_payload}' was reflected in the response"
-            
-            # Поиск паттернов отражения
-            for pattern in self.reflection_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE)
-                if match:
-                    return f"XSS pattern '{match.group(0)}' was found in the response"
-            
-            return "No direct evidence found"
-        
+                
+            # Поиск отражения с HTML-кодировкой
+            html_encoded = payload.replace('<', '&lt;').replace('>', '&gt;')
+            if html_encoded in response_text:
+                return f"HTML-encoded payload '{html_encoded}' was reflected in the response"
+                
+            # Поиск отражения с URL-кодировкой
+            url_encoded = payload.replace(' ', '%20').replace('<', '%3C').replace('>', '%3E')
+            if url_encoded in response_text:
+                return f"URL-encoded payload '{url_encoded}' was reflected in the response"
+                
         except Exception as e:
             logger.error(f"Evidence collection error: {str(e)}")
-            return "Error collecting evidence"
+            
+        return "No direct evidence found"
