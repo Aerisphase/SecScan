@@ -138,12 +138,11 @@ body {
     border: 1px solid var(--border-color);
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     border-radius: 12px;
-    transition: transform 0.2s ease-in-out;
     background-color: var(--card-bg);
 }
 
 .card:hover {
-    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
 .card-header {
@@ -185,7 +184,6 @@ body {
     border-radius: 8px;
     padding: 0.75rem 1.5rem;
     font-weight: 500;
-    transition: all 0.2s ease-in-out;
 }
 
 .btn-primary {
@@ -196,7 +194,6 @@ body {
 .btn-primary:hover {
     background-color: #3a5bef;
     border-color: #3a5bef;
-    transform: translateY(-1px);
 }
 
 .btn-outline-secondary {
@@ -460,8 +457,6 @@ body {
 
 #terminal {
     position: relative;
-    transform: none;
-    transition: none;
 }
 
 /* Scanner running messages */

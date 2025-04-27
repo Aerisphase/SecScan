@@ -1,291 +1,88 @@
-markdown
-# Документация SecScan
+# SecScan - Web Vulnerability Scanner
 
-## Требования
-- Python 3.8 или новее
-- pip (менеджер пакетов Python)
-- SSL-сертификаты (для безопасных HTTPS/WSS-соединений)
+SecScan is a powerful web vulnerability scanner designed to help security professionals and developers identify and fix security issues in web applications. It combines traditional scanning techniques with modern approaches to provide accurate and efficient security testing.
 
-## Установка
-1. Клонируйте репозиторий:
-```bash
-git clone https://github.com/Aerisphase/SecScan.git
-cd SecScan
-Установите зависимости:
+## 🚀 Features
 
-bash
-pip install -r requirements.txt
-Настройте переменные окружения:
+- **Comprehensive Scanning**: Detect OWASP Top 10 vulnerabilities including SQL Injection, XSS, CSRF, and more
+- **Modern Interface**: Clean, intuitive web interface with real-time scanning feedback
+- **Advanced Configuration**: Customize scan parameters for optimal results
+- **Detailed Reporting**: Export scan results in multiple formats
+- **Real-time Terminal**: Monitor scan progress with a built-in terminal interface
 
-Создайте файл .env в корне проекта со следующими переменными:
+## 📋 Requirements
 
-bash
-SECSCAN_API_KEY=your_api_key_here
-SERVER_HOST=localhost
-SERVER_PORT=8000
-SSL_CERT_PATH=path/to/your/cert.pem
-SSL_KEY_PATH=path/to/your/key.pem
-Запуск сервера
-Перейдите в директорию сервера:
+- Python 3.8 or higher
+- pip (Python package manager)
+- Modern web browser (Chrome, Firefox, Edge recommended)
 
-bash
-cd src/server
-Запустите сервер:
+## 🛠️ Installation
 
-bash
-python server.py
-Сервер запустится со следующей конфигурацией по умолчанию:
-
-Хост: localhost
-
-Порт: 8000
-
-SSL: Включен (требуются валидные SSL-сертификаты)
-
-API-ключ: Требуется для аутентификации
-
-Настройки сервера
-Измените конфигурацию через файл .env:
-
-SERVER_HOST: Адрес хоста (по умолчанию: localhost)
-
-SERVER_PORT: Номер порта (по умолчанию: 8000)
-
-SSL_CERT_PATH: Путь к SSL-сертификату
-
-SSL_KEY_PATH: Путь к приватному SSL-ключу
-
-SECSCAN_API_KEY: Ваш API-ключ для аутентификации
-
-Запуск клиента
-Веб-интерфейс
-Перейдите в директорию клиента:
-
-bash
-cd src/client
-Запустите веб-сервер клиента:
-
-bash
-python client.py
-Откройте в браузере:
-
-bash
-https://localhost:8002/static/index.html
-Настройки клиента
-Поддерживаемые аргументы командной строки:
-
---target: Целевой URL для сканирования (обязательно)
-
---server: Адрес сервера (по умолчанию: https://localhost:8000)
-
---api-key: API-ключ для аутентификации (обязательно)
-
---scan-type: Уровень сканирования (варианты: fast, full, по умолчанию: fast)
-
---delay: Задержка между запросами в секундах (по умолчанию: 1.0)
-
---max-pages: Максимальное количество страниц для сканирования (по умолчанию: 20)
-
---user-agent: Пользовательская строка User-Agent
-
---verify-ssl: Проверять SSL-сертификаты (по умолчанию: true)
-
---proxy: URL прокси-сервера
-
---auth: Учетные данные Basic Auth (user:pass)
-
---max-retries: Максимальное количество попыток при ошибках (по умолчанию: 3)
-
-
-## 1. Назначение проекта
-Разработка автоматизированного сканера уязвимостей с элементами искусственного интеллекта (AI/ML) для:
-- Быстрого и точного поиска уязвимостей в веб-приложениях
-- Уменьшения количества ложных срабатываний (False Positives)
-- Автоматической генерации рекомендаций по исправлению
-
-### 1.1. Цели разработки
-Создание интеллектуального сканера уязвимостей нового поколения, который:
-- Автоматизирует 90% рутинных задач пентестера
-- Снижает количество ложных срабатываний в 3-5 раз по сравнению с существующими решениями
-- Предоставляет готовые решения для исправления уязвимостей
-
-### 1.2. Решаемые проблемы
-
-| Проблема                  | Традиционные решения      | Наш подход                          |
-|---------------------------|---------------------------|-------------------------------------|
-| Высокий процент ложных срабатываний | Ручная верификация       | ML-фильтрация с точностью >95%      |
-| Длительное время сканирования      | Линейные проверки        | Параллельный анализ + приоритезация |
-| Сложность интерпретации результатов | Текстовые отчеты         | Интерактивные рекомендации с кодом  |
-
-### 1.3. Целевая аудитория
-**a) Пентестеры**  
-Профессиональные специалисты по безопасности  
-*Выгода: экономия 40-60% времени на проверках*
-
-**b) Разработчики**  
-Веб-программисты, проверяющие свой код  
-*Выгода: примеры исправлений для популярных фреймворков*
-
-**c) DevOps-инженеры**  
-*Выгода: интеграция в CI/CD pipelines*
-
-### 1.4. Ключевые преимущества
-**Для бизнеса**
-- Снижение затрат на аудит безопасности
-- Соответствие требованиям GDPR, PCI DSS
-
-**Технические особенности**
-- Поддержка 20+ типов уязвимостей (OWASP Top 10 + API)
-- Экспорт отчетов в HTML, PDF, JSON
-
-### 1.5. Ожидаемые результаты
-**Количественные**  
-🔹 Обнаружение ≥95% уязвимостей из OWASP Top 10  
-🔹 Среднее время сканирования: ≤15 мин (сайт на 500 страниц)  
-
-**Качественные**  
-🔹 Интуитивно понятный интерфейс (CLI + Web)  
-🔹 Модульная архитектура для легкого расширения  
-
-### 1.6. Ограничения
-- Не заменяет полноценный ручной пентест
-- Требует базовых знаний о веб-безопасности
-- Оптимизирован для современных технологий
-
-### 1.7. Юридические аспекты
-- Режим "этичного хакинга" (только с разрешения владельца)
-- Лицензия: GPLv3 (open-source) + коммерческая версия
-
----
-
-## 2. Сравнение с конкурентами
-
-| Критерий          | Обычные сканеры               | Наш сканер                          |
-|--------------------|-------------------------------|-------------------------------------|
-| Автоматизация      | Требуют ручной настройки      | Полностью автономный анализ + адаптация к WAF |
-| AI/ML              | Нет или слабая интеграция     | ML-фильтрация ложных срабатываний, предсказание 0-day |
-| Исправления        | Только отчёт                  | Генерация патчей / правил для WAF   |
-| Интеграции         | Часто ограничены              | CI/CD, IDE, мессенджеры (Telegram/Slack) |
-| Цена               | Дорого (Burp Suite Pro)       | Бесплатный core + платные фичи      |
-
----
-
-## 3. Основные функции
-### 3.1 Ядро сканирования
-- Проверка на OWASP Top 10 (SQLi, XSS, CSRF, RCE и др.)
-- Поддержка REST API, GraphQL, WebSockets
-- Обход CAPTCHA и WAF (Cloudflare, ModSecurity)
-
-### 3.2 AI-модули
-- Классификация угроз (ML-модель для определения реальных уязвимостей)
-- Контекстный анализ (приоритезация рисков: платежи > блог)
-- Генерация payloads (автоподбор обходных техник для WAF)
-
-### 3.3 Автоматизация
-- Интеграция с GitHub Actions, GitLab CI
-- Плагины для VS Code, JetBrains IDE
-- Уведомления в Telegram/Slack
-
-### 3.4 Дополнительные фичи
-- Голосовой помощник ("Алекса, проверь сайт на XSS")
-- Геймификация (баллы за найденные уязвимости)
-- Open-Scripting (возможность добавлять свои модули)
-
----
-
-## 4. Технологический стек
-**Языки:**
-- Python (основной)
-- Go (для высоконагруженных задач)
-
-**AI/ML:**
-- TensorFlow/PyTorch
-- Scikit-learn
-- NLTK
-
-**Сканирование:**
-- Requests
-- Scapy
-- SQLMap (как модуль)
-
-**Интеграции:**
-- Docker
-- GitHub API
-- Telegram Bot API
-
-**Базы данных:**
-- PostgreSQL (для хранения отчётов)
-- Redis (кеш)
-
----
-
-## 5. Этапы разработки
-### 5.1 MVP (Минимальная версия)
-- Базовый сканер (Python + Requests): проверка SQLi, XSS
-- Простая ML-модель (Scikit-learn): фильтрация ложных срабатываний
-- Консольный отчет (с приоритезацией уязвимостей)
-
-### 5.2 Полная версия
-- AI-модуль: автообход WAF, генерация эксплойтов
-- Интеграции: CI/CD, IDE, Telegram-бот
-- Веб-интерфейс (Dash/Flask) для управления сканированиями
-
----
-
-## 6. Требования к безопасности
-- Анонимность: сканер не должен сохранять исходный код сайтов
-- Легальность: предупреждение о необходимости разрешения на тесты
-- Защита данных: шифрование отчётов (AES-256)
-
----
-
-
-## 7. Метрики успеха
-- Точность: <5% ложных срабатываний
-- Скорость: сканирование среднего сайта (<1000 стр.) за <10 мин
-- Покрытие: обнаружение 95% OWASP Top 10 уязвимостей
-
-
-Вот готовая инструкция по запуску проекта **SecScan** для GitHub на основе нашего чата:
-
----
-
-## 🚀 **Инструкция по запуску SecScan**  
-
----
-
-### 🔧 **Требования**  
-- Python 3.9+  
-- Git  
-- `pip` (обычно идет с Python)  
-
----
-
-### 📥 **1. Клонирование и настройка**  
+1. Clone the repository:
 ```bash
 git clone https://github.com/Aerisphase/SecScan.git
 cd SecScan
 ```
 
----
+2. Create and activate a virtual environment:
 
-### 🛠️ **2. Настройка виртуального окружения**  
-#### Windows:  
+**Windows:**
 ```cmd
 python -m venv venv
 venv\Scripts\activate
 ```
 
-#### Linux/macOS:  
+**Linux/macOS:**
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
----
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
+## ⚙️ Configuration
 
+1. Create a `.env` file in the project root with the following variables:
+```bash
+SECSCAN_API_KEY=your_api_key_here
+SERVER_HOST=localhost
+SERVER_PORT=8000
+SSL_CERT_PATH=path/to/your/cert.pem
+SSL_KEY_PATH=path/to/your/key.pem
+```
 
+## 🏃‍♂️ Quick Start
+
+1. Start the server:
+```bash
+cd src/server
+python server.py
+```
+
+2. Access the web interface:
+```
+https://localhost:8000/static/index.html
+```
+
+## 🔧 Usage
+
+### Web Interface
+1. Open the web interface in your browser
+2. Enter the target URL
+3. Configure scan settings:
+   - Scan Type (Fast/Full)
+   - Maximum Pages
+   - Request Delay
+   - Custom User-Agent
+4. Click "Start Scan"
+5. Monitor progress in the terminal
+6. View and export results
+
+### Command Line
+```bash
 python scanner.py --target https://example.com \
                  --scan-type full \
                  --delay 2.0 \
@@ -295,50 +92,65 @@ python scanner.py --target https://example.com \
                  --auth user:pass \
                  --max-retries 5
 ```
-### 📦 **4. Запуск**
-### Command Line Arguments
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `--target` | Target URL to scan | Required |
-| `--scan-type` | Scan intensity level (fast/full) | fast |
-| `--delay` | Delay between requests in seconds | 1.0 |
-| `--max-pages` | Maximum pages to crawl | 20 |
-| `--user-agent` | Custom User-Agent string | SecScan/1.0 |
-| `--verify-ssl` | Verify SSL certificates | False |
-| `--proxy` | Proxy server URL | None |
-| `--auth` | Basic auth credentials (user:pass) | None |
-| `--max-retries` | Maximum retries for failed requests | 3 |
+## 📊 Scan Types
 
-## Security Features
+- **Fast Scan**: Quick analysis focusing on common vulnerabilities
+- **Full Scan**: Comprehensive analysis including advanced checks
 
-### HTTP Client Security
+## 🔍 Supported Vulnerabilities
+
+- SQL Injection (SQLi)
+- Cross-Site Scripting (XSS)
+- Cross-Site Request Forgery (CSRF)
+- Server-Side Request Forgery (SSRF)
+- XML External Entity (XXE)
+- Security Misconfigurations
+- Insecure Direct Object References (IDOR)
+- Broken Authentication
+- Sensitive Data Exposure
+- Using Components with Known Vulnerabilities
+
+## 🛡️ Security Features
+
 - Rate limiting to prevent server overload
-- Configurable retry mechanism with exponential backoff
-- SSL/TLS verification options
+- Configurable retry mechanism
+- SSL/TLS verification
 - Proxy support
 - Authentication support
-
-### Crawler Security
 - URL validation and sanitization
-- Dangerous URL pattern detection
-- Non-content URL filtering
 - Security header analysis
-- CSRF and CAPTCHA detection
 
-### Security Headers Analysis
-- X-Frame-Options
-- X-Content-Type-Options
-- X-XSS-Protection
-- Content-Security-Policy
-- Strict-Transport-Security
+## 📝 Output Formats
 
-## Output
+- HTML Report
+- JSON Export
+- Terminal Output
+- Real-time Logs
 
-The scanner provides detailed output including:
-- Scan statistics (pages crawled, links found, forms found)
-- Security recommendations
-- Detected vulnerabilities
-- Security headers analysis
+## 🤝 Contributing
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+
+## 📄 License
+
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
+
+## ⚠️ Disclaimer
+
+This tool is for educational and authorized testing purposes only. Always obtain permission before scanning any website or application.
+
+## 📞 Support
+
+For support, please:
+1. Check the [documentation](docs/)
+2. Open an [issue](https://github.com/Aerisphase/SecScan/issues)
+3. Join our [Discord community](https://discord.gg/secscan)
+
+## 🙏 Acknowledgments
+
+- OWASP for vulnerability definitions
+- Open-source security tools that inspired this project
+- Contributors and maintainers
 
 
