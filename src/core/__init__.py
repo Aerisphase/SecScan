@@ -27,7 +27,7 @@ except ImportError as e:
 try:
     # Scanners (optional components)
     from .scanners.xss import XSSScanner
-    from .scanners.sql_injection import SQLInjectionScanner as SQLiScanner
+    from .scanners.sqli import SQLiScanner
     from .scanners.csrf import CSRFScanner
 except ImportError as e:
     import warnings

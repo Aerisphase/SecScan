@@ -1,4 +1,5 @@
 import logging
+from ..http_client import HttpClient
 from typing import List, Dict, Optional
 import re
 from urllib.parse import urlparse, parse_qs, urlencode
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 class SQLInjectionScanner:
     def __init__(self, client=None):
         # Инициализация HTTP клиента
-        self.client = client
+        self.client = client if client else HttpClient()
         
         # Список полезных нагрузок для тестирования SQL-инъекций
         self.payloads = [
@@ -125,18 +126,18 @@ class SQLInjectionScanner:
             r'\[SQLITE_ERROR\]'
         ]
 
-    async def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
-        """Основной метод сканирования, который проверяет SQL-инъекции"""
+    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+        # Основной метод сканирования, который проверяет SQL-инъекции
         vulnerabilities = []
         
         try:
             # Проверка параметров URL
-            url_vulns = await self._check_url_params(url)
+            url_vulns = self._check_url_params(url)
             vulnerabilities.extend(url_vulns)
             
             # Проверка форм
             if forms:
-                form_vulns = await self._check_forms(url, forms)
+                form_vulns = self._check_forms(url, forms)
                 vulnerabilities.extend(form_vulns)
             
         except Exception as e:
@@ -144,54 +145,63 @@ class SQLInjectionScanner:
         
         return vulnerabilities
 
-    async def _check_url_params(self, url: str) -> List[Dict]:
-        """Проверка параметров URL на SQL-инъекции"""
+    def _check_url_params(self, url: str) -> List[Dict]:
+        # Проверка параметров URL на SQL-инъекции
         vulnerabilities = []
         try:
+            # Парсинг URL для получения параметров
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
             
+            # Проверка каждого параметра
             for param, values in params.items():
-                for payload in self.payloads:
-                    try:
-                        # Создание URL с внедренной полезной нагрузкой
-                        modified_params = params.copy()
-                        modified_params[param] = [payload]
-                        modified_query = urlencode(modified_params, doseq=True)
-                        modified_url = parsed_url._replace(query=modified_query).geturl()
-                        
-                        # Отправка запроса
-                        response = await self.client.get(modified_url)
-                        
-                        if response['status_code'] == 200:
+                for value in values:
+                    for payload in self.payloads:
+                        try:
+                            # Создание URL с внедренной полезной нагрузкой
+                            modified_params = params.copy()
+                            modified_params[param] = [payload]
+                            modified_query = urlencode(modified_params, doseq=True)
+                            modified_url = parsed_url._replace(query=modified_query).geturl()
+                            
+                            # Отправка запроса
+                            response = self.client.get(modified_url, timeout=10)
+                            if not response:
+                                continue
+                            
                             # Проверка на уязвимость
-                            if self._is_vulnerable(response['text'], payload):
-                                db_type = self._detect_db_type(response['text'])
+                            if self._is_vulnerable(response.text, payload):
+                                db_type = self._detect_db_type(response.text)
                                 vulnerabilities.append({
                                     'type': 'SQL Injection',
                                     'url': modified_url,
-                                    'parameter': param,
                                     'payload': payload,
-                                    'evidence': self._get_evidence(response['text'], payload, db_type),
+                                    'evidence': self._get_evidence(response.text, payload, db_type),
+                                    'severity': 'high',
+                                    'param': param,
+                                    'method': 'GET',
                                     'db_type': db_type
                                 })
+                                break
                         
-                    except Exception as e:
-                        logger.error(f"URL parameter check error for {param}: {str(e)}")
+                        except Exception as e:
+                            logger.error(f"URL parameter check error for {param}: {str(e)}")
         
         except Exception as e:
             logger.error(f"URL parameters check error: {str(e)}")
         
         return vulnerabilities
 
-    async def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
-        """Проверка форм на SQL-инъекции"""
+    def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
+        # Проверка форм на SQL-инъекции
         vulnerabilities = []
         try:
             for form in forms:
+                # Получение метода и действия формы
                 method = form.get('method', 'GET').upper()
                 action = form.get('action', url)
                 
+                # Проверка каждого поля формы
                 for field in form.get('fields', []):
                     field_name = field.get('name')
                     field_type = field.get('type', 'text')
@@ -212,23 +222,27 @@ class SQLInjectionScanner:
                             
                             # Отправка запроса
                             if method == 'GET':
-                                response = await self.client.get(action, params=form_data)
+                                response = self.client.get(action, params=form_data, timeout=10)
                             else:
-                                response = await self.client.post(action, data=form_data)
+                                response = self.client.post(action, data=form_data, timeout=10)
                             
-                            if response['status_code'] == 200:
-                                # Проверка на уязвимость
-                                if self._is_vulnerable(response['text'], payload):
-                                    db_type = self._detect_db_type(response['text'])
-                                    vulnerabilities.append({
-                                        'type': 'SQL Injection',
-                                        'url': action,
-                                        'parameter': field_name,
-                                        'payload': payload,
-                                        'evidence': self._get_evidence(response['text'], payload, db_type),
-                                        'form_method': method,
-                                        'db_type': db_type
-                                    })
+                            if not response:
+                                continue
+                            
+                            # Проверка на уязвимость
+                            if self._is_vulnerable(response.text, payload):
+                                db_type = self._detect_db_type(response.text)
+                                vulnerabilities.append({
+                                    'type': 'SQL Injection',
+                                    'url': action,
+                                    'payload': payload,
+                                    'evidence': self._get_evidence(response.text, payload, db_type),
+                                    'severity': 'high',
+                                    'param': field_name,
+                                    'method': method,
+                                    'db_type': db_type
+                                })
+                                break
                         
                         except Exception as e:
                             logger.error(f"Form field check error for {field_name}: {str(e)}")
@@ -239,36 +253,38 @@ class SQLInjectionScanner:
         return vulnerabilities
 
     def _is_vulnerable(self, response_text: str, payload: str) -> bool:
-        """Проверка, является ли ответ уязвимым к SQL-инъекциям"""
+        # Проверка, является ли ответ уязвимым к SQL-инъекциям
         try:
-            # Проверка на наличие ошибок SQL
+            # Проверка наличия ошибок SQL
             for pattern in self.success_patterns:
                 if re.search(pattern, response_text, re.IGNORECASE):
                     return True
             
-            # Проверка на изменение ответа
+            # Проверка разницы в ответах
             if payload in response_text:
                 return True
             
+            return False
+        
         except Exception as e:
             logger.error(f"Vulnerability check error: {str(e)}")
-        
-        return False
+            return False
 
     def _detect_db_type(self, response_text: str) -> str:
-        """Определение типа базы данных по ошибкам"""
+        # Определение типа базы данных по ошибкам
         try:
             for db_type, patterns in self.error_patterns.items():
                 for pattern in patterns:
                     if re.search(pattern, response_text, re.IGNORECASE):
                         return db_type
-        except Exception as e:
-            logger.error(f"DB type detection error: {str(e)}")
+            return 'unknown'
         
-        return "unknown"
+        except Exception as e:
+            logger.error(f"Database type detection error: {str(e)}")
+            return 'unknown'
 
     def _get_evidence(self, response_text: str, payload: str, db_type: str) -> str:
-        """Получение доказательства уязвимости"""
+        # Получение доказательства уязвимости
         try:
             # Поиск ошибок SQL
             for pattern in self.success_patterns:
@@ -280,14 +296,8 @@ class SQLInjectionScanner:
             if payload in response_text:
                 return f"Payload '{payload}' was reflected in the response"
             
-            # Поиск ошибок конкретной СУБД
-            if db_type != "unknown":
-                for pattern in self.error_patterns[db_type]:
-                    match = re.search(pattern, response_text, re.IGNORECASE)
-                    if match:
-                        return f"{db_type.upper()} error found: {match.group(0)}"
-            
+            return f"SQL Injection vulnerability detected (DB type: {db_type})"
+        
         except Exception as e:
             logger.error(f"Evidence collection error: {str(e)}")
-        
-        return "No direct evidence found" 
+            return "Error collecting evidence" 
