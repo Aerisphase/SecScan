@@ -1,4 +1,4 @@
-from typing import List  # Добавьте этот импорт в начало файла
+from typing import List  
 import random
 
 class PayloadGenerator:

@@ -549,4 +549,106 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTerminal(`Error: ${error.message}`, 'error');
         }
     });
+
+    // Add AI Analyze button event handler
+    const aiAnalyzeBtn = document.getElementById('aiAnalyzeBtn');
+    aiAnalyzeBtn.addEventListener('click', async () => {
+        let vulnerabilities = [];
+        try {
+            if (window.lastScanResult && window.lastScanResult.vulnerabilities) {
+                vulnerabilities = window.lastScanResult.vulnerabilities;
+            } else {
+                const vulnElements = document.querySelectorAll('.vulnerability-item');
+                vulnElements.forEach(el => {
+                    // Extract type from header text
+                    let headerText = el.querySelector('h6, h3')?.textContent || '';
+                    let typeMatch = headerText.match(/(SQL INJECTION|SQL Injection|XSS|CSRF)/i);
+                    let vulnType = typeMatch ? (typeMatch[1].toUpperCase() === 'SQL INJECTION' ? 'SQL Injection' : typeMatch[1].toUpperCase()) : headerText.trim();
+                    // Extract payload from the details section
+                    let payload = '';
+                    const payloadLabel = Array.from(el.querySelectorAll('p')).find(p => p.textContent.includes('Payload:'));
+                    if (payloadLabel) {
+                        payload = payloadLabel.textContent.replace('Payload:', '').trim();
+                    } else {
+                        payload = el.querySelector('code')?.textContent || '';
+                    }
+                    vulnerabilities.push({
+                        type: vulnType,
+                        evidence: el.textContent,
+                        payload: payload
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Could not gather vulnerabilities:', e);
+            alert('Could not gather vulnerabilities for AI analysis.');
+            return;
+        }
+        if (!vulnerabilities.length) {
+            alert('No vulnerabilities found to analyze.');
+            return;
+        }
+        try {
+            aiAnalyzeBtn.disabled = true;
+            aiAnalyzeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
+            const response = await fetch('/ai-analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY
+                },
+                body: JSON.stringify({ vulnerabilities })
+            });
+            aiAnalyzeBtn.disabled = false;
+            aiAnalyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>AI Analyze';
+            if (!response.ok) {
+                throw new Error('AI analysis failed');
+            }
+            const data = await response.json();
+            showAIResultsModal(data.ai_results);
+        } catch (e) {
+            aiAnalyzeBtn.disabled = false;
+            aiAnalyzeBtn.innerHTML = '<i class="bi bi-cpu me-1"></i>AI Analyze';
+            alert('AI analysis failed: ' + e.message);
+        }
+    });
+
+    // Modal for AI results
+    function showAIResultsModal(results) {
+        let modal = document.getElementById('aiResultsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'aiResultsModal';
+            modal.className = 'modal fade';
+            modal.tabIndex = -1;
+            modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-cpu me-2"></i>AI Analysis Results</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="aiResultsModalBody"></div>
+                </div>
+            </div>`;
+            document.body.appendChild(modal);
+        }
+        const body = modal.querySelector('#aiResultsModalBody');
+        body.innerHTML = results.map((r, i) => `
+            <div class="mb-4 p-3 border rounded" style="background:#222; color:#fff;">
+                <h6><i class="bi bi-exclamation-triangle me-1"></i>Vulnerability #${i+1}: <b>${r.type}</b></h6>
+                <div><b>Risk Score:</b> ${(r.risk_score * 100).toFixed(1)}%</div>
+                <div><b>Confidence:</b> ${(r.confidence * 100).toFixed(1)}%</div>
+                <div><b>Recommendations:</b>
+                    <ul>${r.recommendations.map(rec => `<li>${rec}</li>`).join('')}</ul>
+                </div>
+                <div><b>Payload Variations:</b>
+                    <ul>${r.payload_variations.map(pv => `<li><code>${pv}</code></li>`).join('')}</ul>
+                </div>
+            </div>
+        `).join('');
+        // Show modal using Bootstrap
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    }
 }); 

@@ -29,6 +29,7 @@ from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
 from src.core.reporter import Reporter
 from src.ai.recommender import VulnerabilityRecommender
+from src.ai.vulnerability_analyzer import VulnerabilityAnalyzer
 
 # Setup logging
 logging.basicConfig(
@@ -150,6 +151,7 @@ async def read_root():
 
 # Initialize the recommender
 recommender = VulnerabilityRecommender()
+analyzer = VulnerabilityAnalyzer()
 
 # Add new models
 class RecommendationRequest(BaseModel):
@@ -193,6 +195,22 @@ async def get_preventive_measures(request: RecommendationRequest, api_key: str =
             status_code=500,
             detail=str(e)
         )
+
+@app.post("/ai-analyze")
+async def ai_analyze(request: Request, api_key: str = Depends(get_api_key)):
+    data = await request.json()
+    vulnerabilities = data.get("vulnerabilities", [])
+    print("[AI ANALYZE] Received vulnerabilities:", vulnerabilities)
+    results = []
+    for vuln in vulnerabilities:
+        result = analyzer.analyze_vulnerability(
+            vuln.get("type", ""),
+            vuln.get("evidence", vuln.get("details", "")),
+            vuln.get("payload", "")
+        )
+        results.append(result)
+    print("[AI ANALYZE] AI results:", results)
+    return {"ai_results": results}
 
 # Modify the scan endpoint to include recommendations
 @app.post("/scan")
