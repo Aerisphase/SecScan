@@ -28,6 +28,7 @@ from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
 from src.core.reporter import Reporter
+from src.server.recommendations import RecommendationResponse
 
 # Setup logging
 logging.basicConfig(
@@ -83,6 +84,7 @@ class ScanResult(BaseModel):
     status: str
     stats: Dict
     vulnerabilities: List[Dict]
+    recommendations: List[RecommendationResponse] = []
     timestamp: datetime
 
 # In-memory storage for scan results (replace with database in production)
@@ -149,57 +151,56 @@ async def read_root():
 
 @app.post("/scan")
 async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
+    """Start a new scan"""
     try:
-        start_time = time.time()
-        scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Initialize components
-        crawler = AdvancedCrawler(
-            base_url=config.target_url,
-            max_pages=config.max_pages,
+        scan_id = secrets.token_urlsafe(16)
+        scanner = Scanner(
+            target_url=config.target_url,
+            scan_type=config.scan_type,
             delay=config.delay,
+            max_pages=config.max_pages,
             user_agent=config.user_agent
         )
         
-        scanner = Scanner()
-        reporter = Reporter()
+        # Start scan in background
+        asyncio.create_task(run_scan(scanner, scan_id))
         
-        # Start crawling
-        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
-        pages = await crawler.crawl()
-        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
-        
-        # Scan each page
-        vulnerabilities = []
-        for i, page in enumerate(pages, 1):
-            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
-            page_vulns = scanner.scan_page(page)
-            if page_vulns:
-                vulnerabilities.extend(page_vulns)
-                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
-        
-        # Generate report
-        report = reporter.generate_report(
-            target_url=config.target_url,
-            pages_crawled=len(pages),
-            vulnerabilities_found=vulnerabilities,
-            scan_type=config.scan_type,
-            elapsed_time=time.time() - start_time
-        )
-        
-        # Store results
-        scan_results[scan_id] = report
-        await log_manager.broadcast("Scan completed successfully")
-        
-        return report
-        
+        return {"scan_id": scan_id, "status": "started"}
     except Exception as e:
-        logger.error(f"Scan error: {str(e)}")
-        await log_manager.broadcast(f"Scan error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        logger.error(f"Error starting scan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def run_scan(scanner: Scanner, scan_id: str):
+    """Run the scan and store results"""
+    try:
+        results = await scanner.scan()
+        
+        # Get recommendations for each vulnerability
+        recommendations = []
+        for vuln in results['vulnerabilities']:
+            vuln_recommendations = recommender.get_recommendations({
+                'type': vuln['type'],
+                'description': vuln['description']
+            })
+            recommendations.extend(vuln_recommendations)
+        
+        # Store results with recommendations
+        scan_results[scan_id] = {
+            'scan_id': scan_id,
+            'status': 'completed',
+            'stats': results['stats'],
+            'vulnerabilities': results['vulnerabilities'],
+            'recommendations': recommendations,
+            'timestamp': datetime.now()
+        }
+    except Exception as e:
+        logger.error(f"Error running scan {scan_id}: {e}")
+        scan_results[scan_id] = {
+            'scan_id': scan_id,
+            'status': 'failed',
+            'error': str(e),
+            'timestamp': datetime.now()
+        }
 
 @app.get("/scan/{scan_id}", response_model=ScanResult)
 async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
