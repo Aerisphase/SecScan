@@ -209,7 +209,13 @@ python scanner.py --target https://example.com \
 - Контекстный анализ (приоритезация рисков: платежи > блог)
 - Генерация payloads (автоподбор обходных техник для WAF)
 
-
+### 3.3 Roadmap
+SSRF (Server-Side Request Forgery)
+XXE (XML External Entity)
+IDOR (Insecure Direct Object References)
+File Upload Vulnerabilities
+Command Injection
+Path Traversal
 
 
 
