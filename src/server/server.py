@@ -8,13 +8,15 @@ import logging
 import secrets
 from datetime import datetime
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi import FastAPI, HTTPException, Security, Depends, Request
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 import uvicorn
+import json
+import time
 
 # Add the project root directory to Python path
 project_root = str(Path(__file__).parent.parent.parent)
@@ -24,15 +26,13 @@ from src.core.scanners.xss import XSSScanner
 from src.core.scanners.sqli import SQLiScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
+from src.core.scanner import Scanner
+from src.core.reporter import Reporter
 
 # Setup logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG for more detailed logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('server.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('Server')
 
@@ -67,6 +67,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Models
@@ -92,28 +93,45 @@ class LogManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         self.logger = logging.getLogger('WebSocket')
+        self.connection_lock = asyncio.Lock()
+        self.broadcast_lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        self.logger.info(f"New WebSocket connection established. Total connections: {len(self.active_connections)}")
+        try:
+            async with self.connection_lock:
+                self.active_connections.append(websocket)
+                self.logger.info(f"New WebSocket connection established. Total connections: {len(self.active_connections)}")
+        except Exception as e:
+            self.logger.error(f"Failed to establish WebSocket connection: {str(e)}")
+            raise
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        self.logger.info(f"WebSocket connection closed. Remaining connections: {len(self.active_connections)}")
+    async def disconnect(self, websocket: WebSocket):
+        async with self.connection_lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
+                self.logger.info(f"WebSocket connection closed. Remaining connections: {len(self.active_connections)}")
 
     async def broadcast(self, message: str):
-        if not self.active_connections:
-            self.logger.warning("No active WebSocket connections to broadcast to")
-            return
+        async with self.broadcast_lock:
+            if not self.active_connections:
+                self.logger.warning("No active WebSocket connections to broadcast to")
+                return
+                
+            disconnected = []
+            async with self.connection_lock:
+                for connection in self.active_connections:
+                    try:
+                        # Format message as JSON
+                        message_json = json.dumps({"message": message})
+                        await connection.send_text(message_json)
+                        self.logger.debug(f"Broadcasted message: {message}")
+                    except Exception as e:
+                        self.logger.error(f"Error broadcasting message: {str(e)}")
+                        disconnected.append(connection)
             
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(message)
-                self.logger.debug(f"Broadcasted message: {message}")
-            except Exception as e:
-                self.logger.error(f"Error broadcasting message: {str(e)}")
-                self.disconnect(connection)
+            # Remove disconnected connections
+            for connection in disconnected:
+                await self.disconnect(connection)
 
 log_manager = LogManager()
 
@@ -127,73 +145,61 @@ def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
 
 @app.get("/")
 async def read_root():
-    return {"message": "Welcome to SecScan API"}
+    return {"message": "SecScan API is running"}
 
-@app.post("/scan", response_model=ScanResult)
-async def start_scan(request: ScanRequest, api_key: str = Depends(get_api_key)):
+@app.post("/scan")
+async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
     try:
-        scan_id = secrets.token_urlsafe(16)
+        start_time = time.time()
+        scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Initialize crawler and scanners
-        config = {
-            'max_pages': request.max_pages,
-            'delay': request.delay,
-            'user_agent': request.user_agent,
-            'scan_type': request.scan_type
-        }
-        
-        await log_manager.broadcast(f"Starting scan {scan_id} for {request.target_url}")
-        
-        crawler = AdvancedCrawler(request.target_url, config)
-        crawl_data = crawler.crawl()
-        
-        if not crawl_data:
-            await log_manager.broadcast(f"Scan {scan_id} failed: Failed to crawl target")
-            raise HTTPException(status_code=400, detail="Failed to crawl target")
-        
-        await log_manager.broadcast(f"Scan {scan_id}: Crawled {crawl_data.get('pages_crawled', 0)} pages")
-        
-        # Run scanners
-        scanners = {
-            'xss': XSSScanner(crawler.client),
-            'sqli': SQLiScanner(crawler.client)
-        }
-        
-        vulnerabilities = []
-        for scanner_name, scanner in scanners.items():
-            try:
-                await log_manager.broadcast(f"Scan {scan_id}: Running {scanner_name.upper()} scanner...")
-                vulns = scanner.scan(request.target_url, crawl_data.get('forms', []))
-                if vulns:
-                    vulnerabilities.extend(vulns)
-                    await log_manager.broadcast(f"Scan {scan_id}: Found {len(vulns)} {scanner_name.upper()} vulnerabilities")
-            except Exception as e:
-                error_msg = f"{scanner_name} scanner failed: {str(e)}"
-                await log_manager.broadcast(f"Scan {scan_id}: {error_msg}")
-                logger.error(error_msg)
-        
-        # Store results
-        result = ScanResult(
-            scan_id=scan_id,
-            status="completed",
-            stats={
-                'pages_crawled': crawl_data.get('pages_crawled', 0),
-                'links_found': crawl_data.get('links_found', 0),
-                'forms_found': crawl_data.get('forms_found', 0)
-            },
-            vulnerabilities=vulnerabilities,
-            timestamp=datetime.now()
+        # Initialize components
+        crawler = AdvancedCrawler(
+            base_url=config.target_url,
+            max_pages=config.max_pages,
+            delay=config.delay,
+            user_agent=config.user_agent
         )
         
-        scan_results[scan_id] = result
-        await log_manager.broadcast(f"Scan {scan_id} completed successfully")
-        return result
+        scanner = Scanner()
+        reporter = Reporter()
+        
+        # Start crawling
+        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
+        pages = await crawler.crawl()
+        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
+        
+        # Scan each page
+        vulnerabilities = []
+        for i, page in enumerate(pages, 1):
+            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
+            page_vulns = scanner.scan_page(page)
+            if page_vulns:
+                vulnerabilities.extend(page_vulns)
+                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
+        
+        # Generate report
+        report = reporter.generate_report(
+            target_url=config.target_url,
+            pages_crawled=len(pages),
+            vulnerabilities_found=vulnerabilities,
+            scan_type=config.scan_type,
+            elapsed_time=time.time() - start_time
+        )
+        
+        # Store results
+        scan_results[scan_id] = report
+        await log_manager.broadcast("Scan completed successfully")
+        
+        return report
         
     except Exception as e:
-        error_msg = f"Scan failed: {str(e)}"
-        await log_manager.broadcast(error_msg)
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Scan error: {str(e)}")
+        await log_manager.broadcast(f"Scan error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.get("/scan/{scan_id}", response_model=ScanResult)
 async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
@@ -206,23 +212,59 @@ async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
 async def websocket_endpoint(websocket: WebSocket):
     logger.info("New WebSocket connection attempt")
     try:
+        # Accept connection with protocol validation
+        await websocket.accept(subprotocol='v1.secscan')
+        
+        # Get the selected protocol from the client
+        selected_protocol = websocket.headers.get('sec-websocket-protocol')
+        if selected_protocol != 'v1.secscan':
+            logger.warning(f"Invalid protocol: {selected_protocol}")
+            await websocket.close(code=1002, reason="Invalid protocol")
+            return
+            
         await log_manager.connect(websocket)
-        while True:
-            try:
-                data = await websocket.receive_text()
-                logger.debug(f"Received message: {data}")
-                if data == "ping":
-                    await websocket.send_text("pong")
-            except WebSocketDisconnect:
-                logger.info("WebSocket client disconnected")
-                break
-            except Exception as e:
-                logger.error(f"WebSocket error: {str(e)}")
-                break
+        logger.info("WebSocket connection established successfully")
+        
+        try:
+            while True:
+                try:
+                    # Wait for message or timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=30)
+                    
+                    # Handle ping messages
+                    try:
+                        message = json.loads(data)
+                        if message.get('type') == 'ping':
+                            await websocket.send_text(json.dumps({'type': 'pong'}))
+                            continue
+                        elif message.get('type') == 'pong':
+                            continue
+                        else:
+                            await log_manager.broadcast(json.dumps(message))
+                    except json.JSONDecodeError:
+                        logger.warning(f"Received invalid JSON message: {data}")
+                        
+                except asyncio.TimeoutError:
+                    # Send ping to keep connection alive
+                    await websocket.send_text(json.dumps({'type': 'ping'}))
+                    continue
+                    
+        except WebSocketDisconnect:
+            logger.info("WebSocket client disconnected")
+        except Exception as e:
+            logger.error(f"WebSocket error: {str(e)}")
+            await websocket.close(code=1011, reason="Internal server error")
     except Exception as e:
         logger.error(f"WebSocket connection error: {str(e)}")
+        try:
+            await websocket.close(code=1011, reason="Internal server error")
+        except:
+            pass
     finally:
-        log_manager.disconnect(websocket)
+        try:
+            await log_manager.disconnect(websocket)
+        except Exception as e:
+            logger.error(f"Error during WebSocket cleanup: {str(e)}")
 
 if __name__ == "__main__":
     try:

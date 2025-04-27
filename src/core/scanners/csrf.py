@@ -7,23 +7,23 @@ class CSRFScanner:
         
     def scan(self, url: str) -> Dict[str, Optional[bool]]:
         """
-        Проверяет защиту от CSRF
+        Checks for CSRF protection
         
-        :param url: URL для проверки
-        :return: Результаты в формате {'csrf_protected': bool, 'token_found': bool}
+        :param url: URL to check
+        :return: Results in format {'csrf_protected': bool, 'token_found': bool}
         """
         try:
             response = self.session.get(url)
             html = response.text.lower()
             
-            # Проверка наличия CSRF-токена
+            # Check for CSRF token presence
             token_found = any(
                 'csrf_token' in html or
                 'csrfmiddlewaretoken' in html or
                 'authenticity_token' in html
             )
             
-            # Проверка заголовков защиты
+            # Check protection headers
             protected = (
                 response.headers.get('X-CSRF-Protection') == '1' or
                 'SameSite=Strict' in response.headers.get('Set-Cookie', '')

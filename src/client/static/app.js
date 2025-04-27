@@ -1,14 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const scanForm = document.getElementById('scanForm');
     const resultsCard = document.getElementById('resultsCard');
     const scanStats = document.getElementById('scanStats');
     const vulnerabilities = document.getElementById('vulnerabilities');
+    const advancedOptions = document.getElementById('advancedOptions');
+    const exportResultsBtn = document.getElementById('exportResults');
+    const clearResultsBtn = document.getElementById('clearResults');
+    const randomizeUserAgentBtn = document.getElementById('randomizeUserAgent');
 
     // API configuration
     const API_HOST = window.location.hostname;
-    const API_PORT = window.location.port || '8002';
+    const API_PORT = window.location.port || '8001';
     const API_URL = `https://${API_HOST}:${API_PORT}`;
-    
+    const WS_URL = `wss://${API_HOST}:${API_PORT}/ws/logs`;
+
     // Get API key from localStorage or prompt user
     let API_KEY = localStorage.getItem('secscan_api_key');
     if (!API_KEY) {
@@ -21,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to handle API errors
+    // Handle API errors
     function handleApiError(error) {
         console.error('API Error:', error);
         let errorMessage = 'An error occurred while communicating with the server.';
@@ -39,16 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage = 'CORS error. Please ensure the server is configured to accept requests from this origin.';
         }
         
-        scanStats.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
+        scanStats.innerHTML = `<div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>${errorMessage}
+        </div>`;
     }
 
-    // Function to validate User-Agent
+    // Validate User-Agent
     function validateUserAgent(userAgent) {
         if (!userAgent) {
             return true;
         }
         
-        // Basic validation for User-Agent
         const regex = /^[a-zA-Z0-9\s\(\)\.\/\-\:\;\,\+\=\_]+$/;
         if (!regex.test(userAgent)) {
             alert('Invalid User-Agent format. Please use only alphanumeric characters and common symbols.');
@@ -58,95 +65,322 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
-    // Modify the scan form submission to include User-Agent validation
-    scanForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Randomize User-Agent
+    function randomizeUserAgent() {
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        ];
+        document.getElementById('userAgent').value = userAgents[Math.floor(Math.random() * userAgents.length)];
+    }
 
-        const userAgent = document.getElementById('userAgent').value.trim();
-        if (!validateUserAgent(userAgent)) {
-            return;
+    // Export results
+    function exportResults() {
+        const results = {
+            stats: scanStats.innerHTML,
+            vulnerabilities: vulnerabilities.innerHTML
+        };
+        const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `secscan-results-${new Date().toISOString()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Clear results
+    function clearResults() {
+        scanStats.innerHTML = '';
+        vulnerabilities.innerHTML = '';
+        resultsCard.style.display = 'none';
+    }
+
+    // Event Listeners
+    exportResultsBtn.addEventListener('click', exportResults);
+    clearResultsBtn.addEventListener('click', clearResults);
+    randomizeUserAgentBtn.addEventListener('click', randomizeUserAgent);
+
+    // Advanced options toggle
+    advancedOptions.addEventListener('change', (e) => {
+        const advancedFields = document.querySelectorAll('.advanced-field');
+        advancedFields.forEach(field => {
+            field.style.display = e.target.checked ? 'block' : 'none';
+        });
+    });
+
+    // Terminal Management
+    let isTerminalPaused = false;
+    const terminalContent = document.getElementById('terminalContent');
+    const terminalStatus = document.querySelector('.terminal-status');
+    let ws = null;
+
+    function connectWebSocket() {
+        if (ws) {
+            ws.close();
         }
 
-        // Show loading state
-        resultsCard.style.display = 'block';
-        scanStats.innerHTML = '<div class="loading"><div class="spinner-border text-primary" role="status"></div></div>';
-        vulnerabilities.innerHTML = '';
-
         try {
-            const scanConfig = {
-                target_url: document.getElementById('targetUrl').value,
-                scan_type: document.getElementById('scanType').value,
-                max_pages: parseInt(document.getElementById('maxPages').value),
-                delay: parseFloat(document.getElementById('delay').value),
-                user_agent: userAgent || undefined
+            ws = new WebSocket(WS_URL, ['v1.secscan']);
+            
+            ws.onopen = () => {
+                updateTerminal('Connected to server', 'info');
+                terminalStatus.textContent = 'Connected';
+                terminalStatus.style.backgroundColor = '#4CAF50';
             };
+            
+            ws.onclose = (event) => {
+                updateTerminal(`Disconnected from server (${event.code})`, 'warning');
+                terminalStatus.textContent = 'Disconnected';
+                terminalStatus.style.backgroundColor = '#f44336';
+                
+                // Try to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            ws.onerror = (error) => {
+                updateTerminal(`WebSocket error: ${error.message}`, 'error');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Handle ping/pong messages
+                    if (data.type === 'ping') {
+                        ws.send(JSON.stringify({ type: 'pong' }));
+                        return;
+                    }
+                    if (data.type === 'pong') {
+                        return;
+                    }
 
-            const response = await fetch(`${API_URL}/scan`, {
+                    // Handle regular messages
+                    if (data.message) {
+                        // Handle advanced options messages
+                        if (data.message.includes('Advanced options')) {
+                            const isEnabled = data.message.includes('enabled');
+                            updateTerminal(data.message, isEnabled ? 'success' : 'info');
+                        } else {
+                            updateTerminal(data.message, 'info');
+                        }
+                    }
+                } catch (e) {
+                    updateTerminal(`Invalid message format: ${event.data}`, 'error');
+                }
+            };
+        } catch (error) {
+            updateTerminal(`Failed to create WebSocket connection: ${error.message}`, 'error');
+            setTimeout(connectWebSocket, 5000);
+        }
+    }
+
+    function updateTerminal(message, type = 'info') {
+        if (isTerminalPaused) return;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.className = `terminal-line ${type}`;
+        
+        const timestampSpan = document.createElement('span');
+        timestampSpan.className = 'terminal-timestamp';
+        timestampSpan.textContent = `[${timestamp}]`;
+        
+        const messageSpan = document.createElement('span');
+        
+        // Format page processing messages
+        if (message.includes('Processed page')) {
+            const parts = message.split(' ');
+            const pageNumber = parts[parts.length - 1].replace(/[()]/g, '');
+            const url = parts.slice(3, -1).join(' ');
+            
+            messageSpan.innerHTML = `
+                <span class="page-number">${pageNumber}</span>
+                <span class="page-url">${url}</span>
+            `;
+            line.classList.add('page-processed');
+        }
+        // Format scanner messages
+        else if (message.includes('Running') && (message.includes('XSS') || message.includes('SQLI'))) {
+            const scannerType = message.includes('XSS') ? 'XSS' : 'SQLI';
+            const url = message.split(' on ')[1];
+            
+            messageSpan.innerHTML = `
+                <span class="scanner-badge ${scannerType.toLowerCase()}">${scannerType}</span>
+                <span class="scanner-url">${url}</span>
+            `;
+            line.classList.add('scanner-running');
+        }
+        // Format crawling completion message
+        else if (message.includes('Crawling completed')) {
+            const time = message.split(' in ')[1].split(' seconds')[0];
+            const pages = message.split('Found ')[1].split(' pages')[0];
+            
+            messageSpan.innerHTML = `
+                <span class="completion-message">
+                    Crawling completed in <span class="time">${time}s</span>
+                    <br>
+                    Found <span class="pages">${pages}</span> pages
+                </span>
+            `;
+            line.classList.add('crawl-complete');
+        }
+        else {
+            messageSpan.textContent = message;
+        }
+        
+        line.appendChild(timestampSpan);
+        line.appendChild(messageSpan);
+        terminalContent.appendChild(line);
+        
+        // Auto-scroll to bottom
+        terminalContent.scrollTop = terminalContent.scrollHeight;
+    }
+
+    function clearTerminal() {
+        terminalContent.innerHTML = '';
+        updateTerminal('Terminal cleared', 'info');
+    }
+
+    function toggleTerminalPause() {
+        isTerminalPaused = !isTerminalPaused;
+        const pauseButton = document.getElementById('pauseTerminal');
+        pauseButton.innerHTML = isTerminalPaused ? 
+            '<i class="bi bi-play-fill me-1"></i>Resume' : 
+            '<i class="bi bi-pause-fill me-1"></i>Pause';
+        terminalStatus.textContent = isTerminalPaused ? 'Paused' : 'Connected';
+        terminalStatus.style.backgroundColor = isTerminalPaused ? '#ff9800' : '#4CAF50';
+    }
+
+    // Initialize WebSocket connection when the page loads
+    connectWebSocket();
+    
+    // Event Listeners
+    document.getElementById('clearTerminal').addEventListener('click', clearTerminal);
+    document.getElementById('pauseTerminal').addEventListener('click', toggleTerminalPause);
+    
+    // Keep WebSocket connection alive
+    setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            } catch (error) {
+                updateTerminal(`Failed to send ping: ${error.message}`, 'error');
+                connectWebSocket();
+            }
+        }
+    }, 30000);
+
+    // Update scan form submission
+    document.getElementById('scanForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            target_url: document.getElementById('targetUrl').value,
+            scan_type: document.getElementById('scanType').value,
+            max_pages: document.getElementById('maxPages').value,
+            delay: document.getElementById('delay').value,
+            user_agent: document.getElementById('userAgent').value || undefined
+        };
+        
+        try {
+            updateTerminal('Starting scan...', 'info');
+            updateTerminal(`Target: ${formData.target_url}`, 'info');
+            updateTerminal(`Scan type: ${formData.scan_type}`, 'info');
+            
+            const response = await fetch('/scan', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': API_KEY
                 },
-                body: JSON.stringify(scanConfig),
-                credentials: 'include'
+                body: JSON.stringify(formData)
             });
-
+            
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                if (response.status === 403) {
+                    localStorage.removeItem('secscan_api_key');
+                    throw new Error('Invalid API key. Please refresh the page and enter a valid API key.');
+                }
+                const error = await response.json();
+                throw new Error(error.detail || 'Scan failed');
             }
-
+            
             const result = await response.json();
+            updateTerminal('Scan completed successfully', 'info');
             displayResults(result);
-
+            
         } catch (error) {
-            handleApiError(error);
+            updateTerminal(`Error: ${error.message}`, 'error');
         }
     });
 
+    // Display results
     function displayResults(result) {
+        // Show the results card
+        resultsCard.style.display = 'block';
+        
         // Display statistics
         scanStats.innerHTML = `
             <div class="stats-card">
                 <div class="stats-item">
                     <span>Pages Crawled:</span>
-                    <span>${result.stats.pages_crawled}</span>
+                    <span>${result.stats.pages_crawled || 0}</span>
                 </div>
                 <div class="stats-item">
                     <span>Links Found:</span>
-                    <span>${result.stats.links_found}</span>
+                    <span>${result.stats.links_found || 0}</span>
                 </div>
                 <div class="stats-item">
                     <span>Forms Found:</span>
-                    <span>${result.stats.forms_found}</span>
+                    <span>${result.stats.forms_found || 0}</span>
                 </div>
-                ${result.stats.api_endpoints ? `
                 <div class="stats-item">
-                    <span>API Endpoints:</span>
-                    <span>${result.stats.api_endpoints}</span>
+                    <span>Elapsed Time:</span>
+                    <span>${(result.stats.elapsed_time || 0).toFixed(2)}s</span>
                 </div>
-                ` : ''}
             </div>
         `;
 
         // Display vulnerabilities
         if (result.vulnerabilities && result.vulnerabilities.length > 0) {
-            vulnerabilities.innerHTML = `
-                <div class="vulnerabilities-list">
-                    ${result.vulnerabilities.map((vuln, index) => `
-                        <div class="vulnerability-item ${vuln.severity.toLowerCase()}">
-                            <h5>${index + 1}. ${vuln.type} Vulnerability</h5>
-                            <p><strong>URL:</strong> ${vuln.url}</p>
-                            <p><strong>Parameter:</strong> ${vuln.param}</p>
-                            <p><strong>Payload:</strong> <code>${vuln.payload}</code></p>
-                            <p><strong>Evidence:</strong> ${vuln.evidence}</p>
-                            <p><strong>Severity:</strong> <span class="severity-${vuln.severity.toLowerCase()}">${vuln.severity}</span></p>
-                        </div>
-                    `).join('')}
+            vulnerabilities.innerHTML = result.vulnerabilities.map(vuln => `
+                <div class="vulnerability-item ${vuln.severity.toLowerCase()}">
+                    <h6>${vuln.title}</h6>
+                    <p>${vuln.description}</p>
+                    <div class="vulnerability-details">
+                        <span class="severity">${vuln.severity}</span>
+                        <span class="location">${vuln.location}</span>
+                    </div>
                 </div>
-            `;
+            `).join('');
         } else {
             vulnerabilities.innerHTML = '<div class="alert alert-success">No vulnerabilities found!</div>';
         }
+        
+        // Scroll to results
+        resultsCard.scrollIntoView({ behavior: 'smooth' });
     }
+
+    // Advanced Options Management
+    const advancedOptionsSwitch = document.getElementById('advancedOptions');
+    const advancedFields = document.querySelectorAll('.advanced-field');
+
+    function toggleAdvancedOptions() {
+        const isAdvanced = advancedOptionsSwitch.checked;
+        advancedFields.forEach(field => {
+            field.style.display = isAdvanced ? 'block' : 'none';
+        });
+        updateTerminal(`Advanced options ${isAdvanced ? 'enabled' : 'disabled'}`, 'info');
+    }
+
+    // Add advanced options event listener
+    advancedOptionsSwitch.addEventListener('change', toggleAdvancedOptions);
+    
+    // Set initial state
+    toggleAdvancedOptions();
 }); 
