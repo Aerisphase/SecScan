@@ -10,105 +10,40 @@ import asyncio
 from datetime import datetime
 from asyncio import Semaphore
 from .http_client_adapter import AiohttpClientAdapter
-import json
 
 # Настройка системы логирования
 logger = logging.getLogger('Crawler')
 
 class AdvancedCrawler:
     def __init__(self, config: Dict[str, Any]):
-        """Initialize the crawler with configuration."""
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Initializing AdvancedCrawler")
-        self.logger.debug(f"Received configuration: {json.dumps(config, indent=2)}")
-        
-        if not isinstance(config, dict):
-            error_msg = "Configuration must be a dictionary"
-            self.logger.error(f"{error_msg}. Got: {type(config)}")
-            raise ValueError(error_msg)
-            
-        # Validate configuration structure
-        if 'crawler' not in config:
-            error_msg = "Configuration must contain 'crawler' section"
-            self.logger.error(f"{error_msg}. Got keys: {list(config.keys())}")
-            raise ValueError(error_msg)
-            
-        crawler_config = config['crawler']
-        
-        # Validate required fields
-        required_fields = ['max_pages', 'delay', 'client']
-        for field in required_fields:
-            if field not in crawler_config:
-                error_msg = f"Missing required field in crawler config: {field}"
-                self.logger.error(f"{error_msg}. Got fields: {list(crawler_config.keys())}")
-                raise ValueError(error_msg)
-                
-        # Validate max_pages
-        if not isinstance(crawler_config['max_pages'], (int, float)) or crawler_config['max_pages'] < 1:
-            error_msg = f"max_pages must be a positive number, got: {crawler_config['max_pages']}"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
-            
-        # Validate delay
-        if not isinstance(crawler_config['delay'], (int, float)) or crawler_config['delay'] < 0.1:
-            error_msg = f"delay must be at least 0.1 seconds, got: {crawler_config['delay']}"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
-            
-        # Validate client configuration
-        client_config = crawler_config['client']
-        if not isinstance(client_config, dict):
-            error_msg = "Client configuration must be a dictionary"
-            self.logger.error(f"{error_msg}. Got: {type(client_config)}")
-            raise ValueError(error_msg)
-            
-        required_client_fields = ['timeout', 'max_retries', 'delay', 'user_agent', 'verify_ssl']
-        for field in required_client_fields:
-            if field not in client_config:
-                error_msg = f"Client configuration missing required field: {field}"
-                self.logger.error(f"{error_msg}. Got fields: {list(client_config.keys())}")
-                raise ValueError(error_msg)
-            
-        # Initialize HTTP client with client config
-        self.client = AiohttpClientAdapter(client_config)
-        self.max_pages = crawler_config['max_pages']
-        self.delay = crawler_config['delay']
+        self.config = config
+        self.client = AiohttpClientAdapter(config)
         self.visited_urls = set()
         self.pages = []
-        self.logger.info("AdvancedCrawler initialized successfully")
-            
+        
     async def crawl(self, start_url: str) -> List[Dict[str, Any]]:
         """Crawl the website starting from the given URL"""
         try:
-            if not start_url.startswith(('http://', 'https://')):
-                raise ValueError("URL must start with http:// or https://")
-                
             await self._crawl_url(start_url)
             return self.pages
-            
-        except ValueError as e:
-            logger.error(f"Crawl validation error: {str(e)}")
-            raise
         except Exception as e:
             logger.error(f"Error during crawling: {str(e)}")
             return []
             
     async def _crawl_url(self, url: str) -> None:
         """Crawl a single URL and its links"""
-        try:
-            if len(self.visited_urls) >= self.max_pages:
-                logger.info(f"Reached maximum pages limit ({self.max_pages})")
-                return
-                
-            if url in self.visited_urls:
-                return
-                
-            self.visited_urls.add(url)
+        if len(self.visited_urls) >= self.config.get('max_pages', 20):
+            return
             
+        if url in self.visited_urls:
+            return
+            
+        self.visited_urls.add(url)
+        
+        try:
             # Make request
             response = await self.client.get(url)
             if response['status_code'] != 200:
-                logger.warning(f"Failed to fetch {url}: Status {response['status_code']}")
                 return
                 
             # Parse page
@@ -161,7 +96,7 @@ class AdvancedCrawler:
             logger.error(f"Error crawling {url}: {str(e)}")
             
         # Respect delay between requests
-        await asyncio.sleep(self.delay)
+        await asyncio.sleep(self.config.get('delay', 1.0))
 
 def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
     """Сканирование веб-сайта на наличие уязвимостей"""

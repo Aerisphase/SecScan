@@ -11,9 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // API configuration
     const API_HOST = window.location.hostname;
-    const API_PORT = window.location.port || 8000;
-    const API_BASE_URL = `${window.location.protocol}//${API_HOST}:${API_PORT}`;
-    const WS_BASE_URL = `ws${window.location.protocol === 'https:' ? 's' : ''}://${API_HOST}:${API_PORT}`;
+    const API_PORT = window.location.port || '8001';
+    const API_URL = `https://${API_HOST}:${API_PORT}`;
+    const WS_URL = `wss://${API_HOST}:${API_PORT}/ws/logs`;
 
     // Get API key from localStorage or prompt user
     let API_KEY = localStorage.getItem('secscan_api_key');
@@ -126,16 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Get API key from localStorage
-            const apiKey = localStorage.getItem('secscan_api_key');
-            if (!apiKey) {
-                updateTerminal('Error: API key not found. Please refresh the page and enter your API key.', 'error');
-                return;
-            }
-
-            // Create WebSocket URL with API key
-            const wsUrl = `${WS_BASE_URL}/ws/logs?api_key=${encodeURIComponent(apiKey)}`;
-            ws = new WebSocket(wsUrl, ['v1.secscan']);
+            ws = new WebSocket(WS_URL, ['v1.secscan']);
             
             ws.onopen = () => {
                 updateTerminal('Connected to server', 'info');
@@ -171,7 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Handle regular messages
                     if (data.message) {
-                        updateTerminal(data.message, 'info');
+                        // Handle advanced options messages
+                        if (data.message.includes('Advanced options')) {
+                            const isEnabled = data.message.includes('enabled');
+                            updateTerminal(data.message, isEnabled ? 'success' : 'info');
+                        } else {
+                            updateTerminal(data.message, 'info');
+                        }
                     }
                 } catch (e) {
                     updateTerminal(`Invalid message format: ${event.data}`, 'error');
@@ -297,45 +294,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Get form data
         const formData = new FormData(scanForm);
-        const targetUrl = formData.get('target_url');
-        const scanType = formData.get('scan_type');
-        const delay = parseFloat(formData.get('delay')) || 1.0;
-        const maxPages = parseInt(formData.get('max_pages')) || 20;
-        const userAgent = formData.get('user_agent') || null;
-
-        // Validate required fields
-        if (!targetUrl) {
-            updateTerminal('Error: Target URL is required', 'error');
-            return;
-        }
-
-        if (!scanType) {
-            updateTerminal('Error: Scan type is required', 'error');
-            return;
-        }
-
-        // Validate numeric fields
-        if (isNaN(delay) || delay < 0.1) {
-            updateTerminal('Error: Delay must be a positive number', 'error');
-            return;
-        }
-
-        if (isNaN(maxPages) || maxPages < 1) {
-            updateTerminal('Error: Maximum pages must be a positive number', 'error');
-            return;
-        }
-
-        // Get submit button and spinner
-        const submitButton = document.getElementById('scanButton');
-        const spinner = submitButton.querySelector('.spinner-border');
-        const buttonText = submitButton.querySelector('i').nextSibling;
+        const targetUrl = formData.get('targetUrl');
+        const scanType = formData.get('scanType');
+        const delay = parseFloat(formData.get('delay'));
+        const maxPages = parseInt(formData.get('maxPages'));
+        const userAgent = formData.get('userAgent');
         
         try {
-            // Set loading state
-            submitButton.disabled = true;
-            spinner.classList.remove('d-none');
-            buttonText.textContent = ' Scanning...';
-            
             // Clear previous results
             clearResults();
             
@@ -345,42 +310,23 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTerminal(`Scan type: ${scanType}`, 'info');
             
             // Start scan
-            const requestBody = {
-                target_url: targetUrl,
-                scan_type: scanType,
-                delay: delay,
-                max_pages: maxPages
-            };
-
-            // Only add user_agent if it's not null
-            if (userAgent && userAgent.trim() !== '') {
-                requestBody.user_agent = userAgent.trim();
-            }
-
-            console.log('Sending request:', requestBody); // Debug log
-
-            const response = await fetch(`${API_BASE_URL}/scan`, {
+            const response = await fetch(`${API_URL}/scan`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': API_KEY
                 },
-                body: JSON.stringify(requestBody),
-                credentials: 'include'
+                body: JSON.stringify({
+                    target_url: targetUrl,
+                    scan_type: scanType,
+                    delay: delay,
+                    max_pages: maxPages,
+                    user_agent: userAgent
+                })
             });
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                let errorMessage = `HTTP error! status: ${response.status}`;
-                
-                if (response.status === 422) {
-                    errorMessage = 'Invalid request data. Please check your input.';
-                    if (errorData.detail) {
-                        errorMessage = `Validation error: ${errorData.detail}`;
-                    }
-                }
-                
-                throw new Error(errorMessage);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
@@ -391,18 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Scan error:', error);
             updateTerminal(`Error: ${error.message}`, 'error');
-            
-            // Reset loading state on error
-            submitButton.disabled = false;
-            spinner.classList.add('d-none');
-            buttonText.textContent = 'Start Scan';
-        } finally {
-            // Only reset loading state if not in error
-            if (!submitButton.disabled) {
-                submitButton.disabled = false;
-                spinner.classList.add('d-none');
-                buttonText.textContent = 'Start Scan';
-            }
         }
     });
 

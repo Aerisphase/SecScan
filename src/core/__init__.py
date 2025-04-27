@@ -9,14 +9,8 @@ from .http_client import HttpClient
 __all__ = [
     'AdvancedCrawler',
     'XSSScanner',
-    'SQLInjectionScanner',
+    'SQLiScanner',
     'CSRFScanner',
-    'SSRFScanner',
-    'XXEScanner',
-    'IDORScanner',
-    'BrokenAuthScanner',
-    'SensitiveDataScanner',
-    'SecurityMisconfigScanner',
     'CoreError'
 ]
 
@@ -32,17 +26,9 @@ except ImportError as e:
 
 try:
     # Scanners (optional components)
-    from .scanners import (
-        XSSScanner,
-        SQLInjectionScanner,
-        CSRFScanner,
-        SSRFScanner,
-        XXEScanner,
-        IDORScanner,
-        BrokenAuthScanner,
-        SensitiveDataScanner,
-        SecurityMisconfigScanner
-    )
+    from .scanners.xss import XSSScanner
+    from .scanners.sqli import SQLiScanner
+    from .scanners.csrf import CSRFScanner
 except ImportError as e:
     import warnings
     warnings.warn(f"Some scanners not available: {e}")
@@ -53,10 +39,10 @@ except ImportError as e:
             def __init__(self, session: Session):
                 raise CoreError("XSSScanner not implemented")
     
-    if 'SQLInjectionScanner' not in globals():
-        class SQLInjectionScanner:  # type: ignore
+    if 'SQLiScanner' not in globals():
+        class SQLiScanner:  # type: ignore
             def __init__(self, session: Session):
-                raise CoreError("SQLInjectionScanner not implemented")
+                raise CoreError("SQLiScanner not implemented")
     
     if 'CSRFScanner' not in globals():
         class CSRFScanner:  # type: ignore
@@ -66,7 +52,7 @@ except ImportError as e:
 # Check minimum working configuration
 def check_imports() -> bool:
     """Checks that all key components are loaded"""
-    required = ['AdvancedCrawler', 'XSSScanner', 'SQLInjectionScanner']
+    required = ['AdvancedCrawler', 'XSSScanner', 'SQLiScanner']
     return all(component in globals() for component in required)
 
 # This file makes the core directory a Python package
