@@ -539,4 +539,116 @@ body {
 
 .form-check-input:checked + .form-check-label {
     color: var(--text-primary);
+}
+
+/* Recommendation styles */
+.recommendations {
+    background-color: rgba(74, 107, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.recommendations h6 {
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+}
+
+.recommendations .list-group-item {
+    background-color: transparent;
+    border-color: rgba(74, 107, 255, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+}
+
+.recommendations .list-group-item i {
+    color: var(--success-color);
+}
+
+/* Preventive measures styles */
+.preventive-measures {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.preventive-measures h5 {
+    color: var(--success-color);
+    margin-bottom: 0.75rem;
+}
+
+.preventive-measures .list-group-item {
+    background-color: transparent;
+    border-color: rgba(40, 167, 69, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+}
+
+.preventive-measures .list-group-item i {
+    color: var(--success-color);
+}
+
+/* Vulnerability item enhancements */
+.vulnerability-item {
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.vulnerability-item.high {
+    border-left: 4px solid var(--danger-color);
+}
+
+.vulnerability-item.medium {
+    border-left: 4px solid var(--warning-color);
+}
+
+.vulnerability-item.low {
+    border-left: 4px solid var(--info-color);
+}
+
+.vulnerability-details {
+    margin-top: 0.5rem;
+}
+
+.vulnerability-details p {
+    margin-bottom: 0.25rem;
+}
+
+.vulnerability-details .severity {
+    font-weight: bold;
+}
+
+.vulnerability-details .severity.high {
+    color: var(--danger-color);
+}
+
+.vulnerability-details .severity.medium {
+    color: var(--warning-color);
+}
+
+.vulnerability-details .severity.low {
+    color: var(--info-color);
+}
+
+/* Confidence and prevention score indicators */
+.vulnerability-details .confidence,
+.vulnerability-details .prevention-score {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin-left: 0.5rem;
+}
+
+.vulnerability-details .confidence {
+    background-color: rgba(74, 107, 255, 0.2);
+    color: var(--primary-color);
+}
+
+.vulnerability-details .prevention-score {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: var(--success-color);
 } 

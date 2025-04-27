@@ -28,6 +28,7 @@ from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
 from src.core.reporter import Reporter
+from src.ai.recommender import VulnerabilityRecommender
 
 # Setup logging
 logging.basicConfig(
@@ -147,16 +148,66 @@ def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
 async def read_root():
     return {"message": "SecScan API is running"}
 
+# Initialize the recommender
+recommender = VulnerabilityRecommender()
+
+# Add new models
+class RecommendationRequest(BaseModel):
+    vulnerability: Dict
+    code_context: Optional[str] = None
+
+class RecommendationResponse(BaseModel):
+    recommendations: List[str]
+    severity: str
+    prevention_score: float
+    confidence: float
+
+# Add new endpoints
+@app.post("/recommendations", response_model=RecommendationResponse)
+async def get_recommendations(request: RecommendationRequest, api_key: str = Depends(get_api_key)):
+    """Get recommendations for a vulnerability"""
+    try:
+        recommendations = recommender.get_recommendations(request.vulnerability)
+        return recommendations
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+@app.post("/preventive-measures")
+async def get_preventive_measures(request: RecommendationRequest, api_key: str = Depends(get_api_key)):
+    """Get preventive measures based on code context"""
+    try:
+        if not request.code_context:
+            raise HTTPException(
+                status_code=400,
+                detail="Code context is required for preventive measures"
+            )
+        measures = recommender.get_preventive_measures(request.code_context)
+        return {"measures": measures}
+    except Exception as e:
+        logger.error(f"Error getting preventive measures: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+# Modify the scan endpoint to include recommendations
 @app.post("/scan")
 async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
     try:
         start_time = time.time()
         scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
+        # Set max_pages based on scan type
+        max_pages = 100 if config.scan_type == "full" else config.max_pages
+        
         # Initialize components
         crawler = AdvancedCrawler(
             base_url=config.target_url,
-            max_pages=config.max_pages,
+            max_pages=max_pages,
             delay=config.delay,
             user_agent=config.user_agent
         )
@@ -175,6 +226,12 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
             await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
             page_vulns = scanner.scan_page(page)
             if page_vulns:
+                # Add recommendations to each vulnerability
+                for vuln in page_vulns:
+                    recommendations = recommender.get_recommendations(vuln)
+                    vuln['recommendations'] = recommendations['recommendations']
+                    vuln['prevention_score'] = recommendations['prevention_score']
+                    vuln['confidence'] = recommendations['confidence']
                 vulnerabilities.extend(page_vulns)
                 await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
         

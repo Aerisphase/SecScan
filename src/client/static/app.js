@@ -321,49 +321,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Display results
     function displayResults(result) {
-        // Show the results card
+        // Clear previous results
+        scanStats.innerHTML = '';
+        vulnerabilities.innerHTML = '';
         resultsCard.style.display = 'block';
-        
+
         // Display statistics
+        const stats = result.stats || {};
         scanStats.innerHTML = `
-            <div class="stats-card">
-                <div class="stats-item">
-                    <span>Pages Crawled:</span>
-                    <span>${result.stats.pages_crawled || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Links Found:</span>
-                    <span>${result.stats.links_found || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Forms Found:</span>
-                    <span>${result.stats.forms_found || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Elapsed Time:</span>
-                    <span>${(result.stats.elapsed_time || 0).toFixed(2)}s</span>
-                </div>
+            <div class="alert alert-info">
+                <h5><i class="bi bi-graph-up me-2"></i>Scan Statistics</h5>
+                <ul class="mb-0">
+                    <li>Pages crawled: ${stats.pages_crawled || 0}</li>
+                    <li>Links found: ${stats.links_found || 0}</li>
+                    <li>Forms found: ${stats.forms_found || 0}</li>
+                </ul>
             </div>
         `;
 
-        // Display vulnerabilities
-        if (result.vulnerabilities && result.vulnerabilities.length > 0) {
-            vulnerabilities.innerHTML = result.vulnerabilities.map(vuln => `
-                <div class="vulnerability-item ${vuln.severity.toLowerCase()}">
-                    <h6>${vuln.title}</h6>
-                    <p>${vuln.description}</p>
-                    <div class="vulnerability-details">
-                        <span class="severity">${vuln.severity}</span>
-                        <span class="location">${vuln.location}</span>
+        // Display vulnerabilities with recommendations
+        const vulns = result.vulnerabilities || [];
+        if (vulns.length > 0) {
+            vulnerabilities.innerHTML = `
+                <h5 class="mb-3"><i class="bi bi-shield-exclamation me-2"></i>Found ${vulns.length} Vulnerabilities</h5>
+                ${vulns.map((vuln, index) => `
+                    <div class="vulnerability-item ${vuln.severity}">
+                        <h6>
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            ${vuln.type.toUpperCase()} at ${vuln.url}
+                        </h6>
+                        <div class="vulnerability-details">
+                            <p><strong>Parameter:</strong> ${vuln.param || 'N/A'}</p>
+                            <p><strong>Payload:</strong> ${vuln.payload || 'N/A'}</p>
+                            <p><strong>Evidence:</strong> ${vuln.evidence || 'N/A'}</p>
+                            <p><strong>Severity:</strong> <span class="severity">${vuln.severity}</span></p>
+                            <p><strong>Prevention Score:</strong> ${(vuln.prevention_score * 100).toFixed(1)}%</p>
+                            <p><strong>Confidence:</strong> ${(vuln.confidence * 100).toFixed(1)}%</p>
+                        </div>
+                        <div class="recommendations mt-3">
+                            <h6><i class="bi bi-lightbulb me-2"></i>Recommendations</h6>
+                            <ul class="list-group list-group-flush">
+                                ${vuln.recommendations.map(rec => `
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle me-2"></i>${rec}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('')}
+            `;
         } else {
-            vulnerabilities.innerHTML = '<div class="alert alert-success">No vulnerabilities found!</div>';
+            vulnerabilities.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>No vulnerabilities found
+                </div>
+            `;
         }
-        
-        // Scroll to results
-        resultsCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Add function to get preventive measures
+    async function getPreventiveMeasures(codeContext) {
+        try {
+            const response = await fetch(`${API_URL}/preventive-measures`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY
+                },
+                body: JSON.stringify({ code_context: codeContext })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.measures;
+        } catch (error) {
+            console.error('Error getting preventive measures:', error);
+            return [];
+        }
+    }
+
+    // Add function to display preventive measures
+    function displayPreventiveMeasures(measures) {
+        const preventiveMeasuresDiv = document.createElement('div');
+        preventiveMeasuresDiv.className = 'preventive-measures mt-4';
+        preventiveMeasuresDiv.innerHTML = `
+            <h5><i class="bi bi-shield-check me-2"></i>Preventive Measures</h5>
+            <ul class="list-group list-group-flush">
+                ${measures.map(measure => `
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle me-2"></i>${measure}
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+        vulnerabilities.appendChild(preventiveMeasuresDiv);
     }
 
     // Advanced Options Management
