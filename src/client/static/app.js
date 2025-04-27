@@ -193,44 +193,48 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageSpan = document.createElement('span');
         
         // Format page processing messages
-        if (message.includes('Processed page')) {
-            const parts = message.split(' ');
-            const pageNumber = parts[parts.length - 1].replace(/[()]/g, '');
-            const url = parts.slice(3, -1).join(' ');
-            
-            messageSpan.innerHTML = `
-                <span class="page-number">${pageNumber}</span>
-                <span class="page-url">${url}</span>
-            `;
-            line.classList.add('page-processed');
-        }
-        // Format scanner messages
-        else if (message.includes('Running') && (message.includes('XSS') || message.includes('SQLI'))) {
-            const scannerType = message.includes('XSS') ? 'XSS' : 'SQLI';
-            const url = message.split(' on ')[1];
-            
-            messageSpan.innerHTML = `
-                <span class="scanner-badge ${scannerType.toLowerCase()}">${scannerType}</span>
-                <span class="scanner-url">${url}</span>
-            `;
-            line.classList.add('scanner-running');
-        }
-        // Format crawling completion message
-        else if (message.includes('Crawling completed')) {
-            const time = message.split(' in ')[1].split(' seconds')[0];
-            const pages = message.split('Found ')[1].split(' pages')[0];
-            
-            messageSpan.innerHTML = `
-                <span class="completion-message">
-                    Crawling completed in <span class="time">${time}s</span>
-                    <br>
-                    Found <span class="pages">${pages}</span> pages
-                </span>
-            `;
-            line.classList.add('crawl-complete');
-        }
-        else {
-            messageSpan.textContent = message;
+        if (message && typeof message === 'string') {
+            if (message.includes('Processed page')) {
+                const parts = message.split(' ');
+                const pageNumber = parts[parts.length - 1].replace(/[()]/g, '');
+                const url = parts.slice(3, -1).join(' ');
+                
+                messageSpan.innerHTML = `
+                    <span class="page-number">${pageNumber}</span>
+                    <span class="page-url">${url}</span>
+                `;
+                line.classList.add('page-processed');
+            }
+            // Format scanner messages
+            else if (message.includes('Running') && (message.includes('XSS') || message.includes('SQLI'))) {
+                const scannerType = message.includes('XSS') ? 'XSS' : 'SQLI';
+                const url = message.split(' on ')[1];
+                
+                messageSpan.innerHTML = `
+                    <span class="scanner-badge ${scannerType.toLowerCase()}">${scannerType}</span>
+                    <span class="scanner-url">${url}</span>
+                `;
+                line.classList.add('scanner-running');
+            }
+            // Format crawling completion message
+            else if (message.includes('Crawling completed')) {
+                const time = message.split(' in ')[1]?.split(' seconds')[0] || '0';
+                const pages = message.split('Found ')[1]?.split(' pages')[0] || '0';
+                
+                messageSpan.innerHTML = `
+                    <span class="completion-message">
+                        Crawling completed in <span class="time">${time}s</span>
+                        <br>
+                        Found <span class="pages">${pages}</span> pages
+                    </span>
+                `;
+                line.classList.add('crawl-complete');
+            }
+            else {
+                messageSpan.textContent = message;
+            }
+        } else {
+            messageSpan.textContent = message?.toString() || 'Unknown message';
         }
         
         line.appendChild(timestampSpan);
@@ -424,12 +428,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Advanced Options Management
     const advancedOptionsSwitch = document.getElementById('advancedOptions');
     const advancedFields = document.querySelectorAll('.advanced-field');
+    const testButton = document.getElementById('testButton');
 
     function toggleAdvancedOptions() {
         const isAdvanced = advancedOptionsSwitch.checked;
         advancedFields.forEach(field => {
             field.style.display = isAdvanced ? 'block' : 'none';
         });
+        // Show/hide test button
+        testButton.style.display = isAdvanced ? 'block' : 'none';
         updateTerminal(`Advanced options ${isAdvanced ? 'enabled' : 'disabled'}`, 'info');
     }
 
@@ -438,4 +445,108 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set initial state
     toggleAdvancedOptions();
+
+    // Add test functionality
+    document.getElementById('testButton').addEventListener('click', async () => {
+        try {
+            // Clear previous results
+            clearResults();
+            
+            // Update terminal with test scan messages
+            updateTerminal('Starting test scan...', 'info');
+            updateTerminal('Target: https://example.com', 'info');
+            updateTerminal('Scan type: full', 'info');
+            
+            // Simulate crawling with proper message format
+            updateTerminal('Crawling completed. Found 5 pages in 2.5 seconds', 'info');
+            updateTerminal('Running XSS scanner on https://example.com/search', 'info');
+            updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
+            
+            // Create sample vulnerabilities
+            const sampleResult = {
+                scan_id: 'test_scan_123',
+                target_url: 'https://example.com',
+                scan_type: 'full',
+                timestamp: new Date().toISOString(),
+                elapsed_time: 2.5,
+                stats: {
+                    pages_crawled: 5,
+                    total_vulnerabilities: 3,
+                    severity_counts: {
+                        critical: 1,
+                        high: 2,
+                        medium: 0,
+                        low: 0
+                    }
+                },
+                vulnerabilities: [
+                    {
+                        type: 'SQL Injection',
+                        url: 'https://example.com/login',
+                        payload: "' OR '1'='1",
+                        evidence: 'SQL error detected: MySQL server version for the right syntax',
+                        severity: 'critical',
+                        param: 'username',
+                        method: 'POST',
+                        recommendations: [
+                            'Используйте параметризованные запросы или подготовленные выражения',
+                            'Реализуйте проверку входных данных',
+                            'Используйте ORM-фреймворки',
+                            'Применяйте принцип наименьших привилегий'
+                        ],
+                        prevention_score: 0.95,
+                        confidence: 0.98
+                    },
+                    {
+                        type: 'XSS',
+                        url: 'https://example.com/search',
+                        payload: '<script>alert("XSS")</script>',
+                        evidence: 'XSS payload found in response without encoding',
+                        severity: 'high',
+                        param: 'q',
+                        method: 'GET',
+                        recommendations: [
+                            'Реализуйте Content Security Policy (CSP)',
+                            'Используйте кодирование вывода',
+                            'Проверяйте и санируйте пользовательский ввод',
+                            'Используйте современные фреймворки со встроенной защитой от XSS'
+                        ],
+                        prevention_score: 0.90,
+                        confidence: 0.95
+                    },
+                    {
+                        type: 'CSRF',
+                        url: 'https://example.com/update-profile',
+                        payload: 'Missing CSRF token',
+                        evidence: 'No CSRF protection headers found',
+                        severity: 'high',
+                        param: 'profile_data',
+                        method: 'POST',
+                        recommendations: [
+                            'Реализуйте CSRF-токены',
+                            'Используйте атрибут SameSite для куки',
+                            'Проверяйте заголовки origin',
+                            'Реализуйте паттерн двойной отправки куки'
+                        ],
+                        prevention_score: 0.85,
+                        confidence: 0.92
+                    }
+                ],
+                security_recommendations: [
+                    'Missing X-Frame-Options header - Consider adding to prevent clickjacking',
+                    'Missing X-Content-Type-Options header - Consider adding "nosniff"',
+                    'Missing Content-Security-Policy header - Consider implementing CSP',
+                    'Missing Strict-Transport-Security header - Consider adding HSTS'
+                ]
+            };
+
+            // Display results
+            updateTerminal('Scan completed successfully', 'info');
+            displayResults(sampleResult);
+            
+        } catch (error) {
+            console.error('Test scan error:', error);
+            updateTerminal(`Error: ${error.message}`, 'error');
+        }
+    });
 }); 
