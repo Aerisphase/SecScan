@@ -339,42 +339,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     <li>Pages crawled: ${stats.pages_crawled || 0}</li>
                     <li>Links found: ${stats.links_found || 0}</li>
                     <li>Forms found: ${stats.forms_found || 0}</li>
+                    <li>Total vulnerabilities: ${stats.total_vulnerabilities || 0}</li>
+                    ${Object.entries(stats.severity_counts || {}).map(([severity, count]) => `
+                        <li>${severity.charAt(0).toUpperCase() + severity.slice(1)}: ${count}</li>
+                    `).join('')}
                 </ul>
             </div>
         `;
 
-        // Display vulnerabilities with recommendations
+        // Display vulnerabilities with AI-based recommendations
         const vulns = result.vulnerabilities || [];
         if (vulns.length > 0) {
-            vulnerabilities.innerHTML = `
-                <h5 class="mb-3"><i class="bi bi-shield-exclamation me-2"></i>Found ${vulns.length} Vulnerabilities</h5>
-                ${vulns.map((vuln, index) => `
-                    <div class="vulnerability-item ${vuln.severity}">
-                        <h6>
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            ${vuln.type.toUpperCase()} at ${vuln.url}
-                        </h6>
-                        <div class="vulnerability-details">
-                            <p><strong>Parameter:</strong> ${vuln.param || 'N/A'}</p>
-                            <p><strong>Payload:</strong> ${vuln.payload || 'N/A'}</p>
-                            <p><strong>Evidence:</strong> ${vuln.evidence || 'N/A'}</p>
-                            <p><strong>Severity:</strong> <span class="severity">${vuln.severity}</span></p>
-                            <p><strong>Prevention Score:</strong> ${(vuln.prevention_score * 100).toFixed(1)}%</p>
-                            <p><strong>Confidence:</strong> ${(vuln.confidence * 100).toFixed(1)}%</p>
-                        </div>
-                        <div class="recommendations mt-3">
-                            <h6><i class="bi bi-lightbulb me-2"></i>Recommendations</h6>
-                            <ul class="list-group list-group-flush">
-                                ${vuln.recommendations.map(rec => `
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle me-2"></i>${rec}
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                    </div>
-                `).join('')}
-            `;
+            displayVulnerabilities(vulns);
         } else {
             vulnerabilities.innerHTML = `
                 <div class="alert alert-success">
@@ -382,6 +358,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }
+
+        // Display preventive measures
+        if (result.security_recommendations && result.security_recommendations.length > 0) {
+            const preventiveMeasuresDiv = document.createElement('div');
+            preventiveMeasuresDiv.className = 'preventive-measures mt-4';
+            preventiveMeasuresDiv.innerHTML = `
+                <h5><i class="bi bi-shield-check me-2"></i>Preventive Measures</h5>
+                <ul class="list-group list-group-flush">
+                    ${result.security_recommendations.map(measure => `
+                        <li class="list-group-item">
+                            <i class="bi bi-check-circle me-2"></i>${measure}
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+            vulnerabilities.appendChild(preventiveMeasuresDiv);
+        }
+    }
+
+    function displayVulnerabilities(vulnerabilities) {
+        const vulnerabilitiesList = document.getElementById('vulnerabilitiesList');
+        vulnerabilitiesList.innerHTML = '';
+
+        vulnerabilities.forEach(vuln => {
+            const vulnItem = document.createElement('div');
+            vulnItem.className = 'vulnerability-item';
+            
+            // Create recommendations list with Exploit-DB links
+            const recommendationsList = document.createElement('ul');
+            recommendationsList.className = 'list-group recommendations';
+            
+            vuln.recommendations.forEach(rec => {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item';
+                
+                if (rec.startsWith('https://www.exploit-db.com')) {
+                    // Handle Exploit-DB links
+                    const link = document.createElement('a');
+                    link.href = rec;
+                    link.className = 'exploit-link';
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    
+                    if (rec.includes('search')) {
+                        link.textContent = 'View Similar Exploits';
+                    } else {
+                        link.textContent = 'View Exploit Documentation';
+                    }
+                    
+                    listItem.appendChild(link);
+                } else {
+                    // Handle regular recommendations
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-shield-alt';
+                    listItem.appendChild(icon);
+                    listItem.appendChild(document.createTextNode(rec));
+                }
+                
+                recommendationsList.appendChild(listItem);
+            });
+
+            vulnItem.innerHTML = `
+                <div class="vulnerability-header">
+                    <h3>${vuln.type}</h3>
+                    <span class="severity-badge ${vuln.severity.toLowerCase()}">${vuln.severity}</span>
+                </div>
+                <div class="vulnerability-details">
+                    <p><strong>Location:</strong> ${vuln.location}</p>
+                    <p><strong>Payload:</strong> <code>${vuln.payload}</code></p>
+                    <p><strong>Evidence:</strong> ${vuln.evidence}</p>
+                    <div class="confidence-score">
+                        <span class="score-label">Confidence:</span>
+                        <div class="score-bar">
+                            <div class="score-fill" style="width: ${vuln.confidence}%"></div>
+                        </div>
+                        <span class="score-value">${vuln.confidence}%</span>
+                    </div>
+                </div>
+                <div class="vulnerability-recommendations">
+                    <h4>Recommendations</h4>
+                </div>
+            `;
+            
+            vulnItem.querySelector('.vulnerability-recommendations').appendChild(recommendationsList);
+            vulnerabilitiesList.appendChild(vulnItem);
+        });
     }
 
     // Add function to get preventive measures
