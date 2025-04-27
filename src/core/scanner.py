@@ -2,13 +2,27 @@ import sys
 import io
 import argparse
 import logging
-from typing import Dict, Optional, List
+import asyncio
+from typing import Dict, Optional, List, Any
 from .crawler import AdvancedCrawler
-from .scanners import SQLiScanner, XSSScanner
+from .scanners import (
+    XSSScanner,
+    SQLInjectionScanner,
+    CSRFScanner,
+    SSRFScanner,
+    XXEScanner,
+    IDORScanner,
+    BrokenAuthScanner,
+    SensitiveDataScanner,
+    SecurityMisconfigScanner
+)
+from .http_client_adapter import AiohttpClientAdapter
 
 # Настройка кодировки для Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+logger = logging.getLogger('Scanner')
 
 def setup_logging():
     """Настройка системы логирования"""
@@ -70,96 +84,110 @@ def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
     return recommendations
 
 class Scanner:
-    def __init__(self, config: Optional[Dict] = None):
-        self.config = config or {}
-        self.logger = logging.getLogger('Scanner')
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        # Create adapter for aiohttp client
+        self.client = AiohttpClientAdapter(config['client'])
         
-    def scan(self, target_url: str) -> Optional[Dict]:
-        """Main scanning function"""
-        try:
-            # Ensure correct types in config
-            validated_config = {
-                'max_pages': int(self.config.get('max_pages', 20)),
-                'delay': float(self.config.get('delay', 1.0)),
-                'user_agent': str(self.config.get('user_agent', '')),
-                'scan_type': str(self.config.get('scan_type', 'fast')),
-                'verify_ssl': bool(self.config.get('verify_ssl', True)),
-                'proxy': self.config.get('proxy'),
-                'auth': self.config.get('auth'),
-                'max_retries': int(self.config.get('max_retries', 3))
-            }
-
-            self.logger.debug(f"Using config: {validated_config}")
-            crawler = AdvancedCrawler(target_url, validated_config)
-            crawl_data = crawler.crawl()
-            
-            if not crawl_data:
-                self.logger.error("No data collected during crawling")
-                return None
-
-            # Analyze security headers
-            security_recommendations = analyze_security_headers(crawl_data.get('security_headers', {}))
-
-            # Initialize scanners
-            scanners = {
-                'xss': XSSScanner(crawler.client),
-                'sqli': SQLiScanner(crawler.client)
-            }
-
-            # Collect vulnerabilities
-            vulnerabilities = []
-            for scanner_name, scanner in scanners.items():
-                try:
-                    self.logger.info(f"Running {scanner_name.upper()} scanner...")
-                    vulns = scanner.scan(target_url, crawl_data.get('forms', []))
-                    if vulns:
-                        vulnerabilities.extend(vulns)
-                except Exception as e:
-                    self.logger.error(f"{scanner_name} scanner failed: {str(e)}")
-
-            return {
-                'stats': {
-                    'pages_crawled': crawl_data.get('pages_crawled', 0),
-                    'links_found': crawl_data.get('links_found', 0),
-                    'forms_found': crawl_data.get('forms_found', 0)
-                },
-                'vulnerabilities': vulnerabilities,
-                'security_recommendations': security_recommendations,
-                'security_headers': crawl_data.get('security_headers', {})
-            }
-
-        except Exception as e:
-            self.logger.error(f"Scanning error: {str(e)}", exc_info=True)
-            return None
-
-    def scan_page(self, page_data: Dict) -> List[Dict]:
+    async def scan_page(self, url: str) -> List[Dict[str, Any]]:
         """Scan a single page for vulnerabilities"""
-        try:
-            vulnerabilities = []
-            url = page_data.get('url', '')
-            forms = page_data.get('forms', [])
+        vulnerabilities = []
+        
+        # Initialize enabled scanners
+        scanners = []
+        logger.info("Initializing scanners...")
+        
+        if self.config['scanners'].get('xss', True):
+            logger.info("Initializing XSS scanner")
+            scanners.append(XSSScanner(self.client))
+        if self.config['scanners'].get('sql_injection', True):
+            logger.info("Initializing SQL Injection scanner")
+            scanners.append(SQLInjectionScanner(self.client))
+        if self.config['scanners'].get('csrf', True):
+            logger.info("Initializing CSRF scanner")
+            scanners.append(CSRFScanner(self.client))
+        if self.config['scanners'].get('ssrf', True):
+            logger.info("Initializing SSRF scanner")
+            scanners.append(SSRFScanner(self.client))
+        if self.config['scanners'].get('xxe', True):
+            logger.info("Initializing XXE scanner")
+            scanners.append(XXEScanner(self.client))
+        if self.config['scanners'].get('idor', True):
+            logger.info("Initializing IDOR scanner")
+            scanners.append(IDORScanner(self.client))
+        if self.config['scanners'].get('broken_auth', True):
+            logger.info("Initializing Broken Auth scanner")
+            scanners.append(BrokenAuthScanner(self.client))
+        if self.config['scanners'].get('sensitive_data', True):
+            logger.info("Initializing Sensitive Data scanner")
+            scanners.append(SensitiveDataScanner(self.client))
+        if self.config['scanners'].get('security_misconfig', True):
+            logger.info("Initializing Security Misconfig scanner")
+            scanners.append(SecurityMisconfigScanner(self.client))
             
-            # Initialize scanners
-            scanners = {
-                'xss': XSSScanner(None),  # We don't need the client for page scanning
-                'sqli': SQLiScanner(None)
+        logger.info(f"Total scanners initialized: {len(scanners)}")
+        
+        # Run all scanners concurrently
+        tasks = []
+        for scanner in scanners:
+            try:
+                logger.info(f"Starting {scanner.__class__.__name__} on {url}")
+                task = asyncio.create_task(scanner.scan(url))
+                tasks.append(task)
+            except Exception as e:
+                logger.error(f"Error initializing {scanner.__class__.__name__}: {str(e)}")
+                logger.error(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
+                
+        # Wait for all scanners to complete
+        logger.info(f"Waiting for {len(tasks)} scanner tasks to complete...")
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Scanner {scanners[i].__class__.__name__} failed: {str(result)}")
+                logger.error(f"Error details: {type(result).__name__}: {str(result)}", exc_info=True)
+            elif isinstance(result, list):
+                vulnerabilities.extend(result)
+                logger.info(f"Scanner {scanners[i].__class__.__name__} found {len(result)} vulnerabilities")
+                
+        return vulnerabilities
+
+    async def scan(self, target_url: str) -> Dict[str, Any]:
+        """Main scanning method"""
+        try:
+            # Initialize crawler
+            crawler = AdvancedCrawler(self.config['crawler'])
+            
+            # Crawl the target
+            logger.info(f"Starting crawl of {target_url}")
+            pages = await crawler.crawl(target_url)
+            logger.info(f"Crawling completed. Found {len(pages)} pages")
+            
+            # Scan each page
+            all_vulnerabilities = []
+            for i, page in enumerate(pages, 1):
+                logger.info(f"Scanning page {i}/{len(pages)}: {page['url']}")
+                page_vulns = await self.scan_page(page['url'])
+                if page_vulns:
+                    all_vulnerabilities.extend(page_vulns)
+                    logger.info(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
+            
+            # Prepare results
+            results = {
+                'target_url': target_url,
+                'pages_crawled': len(pages),
+                'vulnerabilities_found': len(all_vulnerabilities),
+                'vulnerabilities': all_vulnerabilities,
+                'scan_type': self.config.get('scan_type', 'fast'),
+                'scanners_used': [k for k, v in self.config['scanners'].items() if v]
             }
             
-            # Run each scanner on the page
-            for scanner_name, scanner in scanners.items():
-                try:
-                    self.logger.info(f"Running {scanner_name.upper()} scanner on {url}")
-                    vulns = scanner.scan(url, forms)
-                    if vulns:
-                        vulnerabilities.extend(vulns)
-                except Exception as e:
-                    self.logger.error(f"{scanner_name} scanner failed on {url}: {str(e)}")
-            
-            return vulnerabilities
+            return results
             
         except Exception as e:
-            self.logger.error(f"Error scanning page {url}: {str(e)}")
-            return []
+            logger.error(f"Scan error: {str(e)}")
+            raise
 
 def print_results(results: Dict):
     """Вывод результатов в консоль"""

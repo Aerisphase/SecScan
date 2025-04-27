@@ -44,10 +44,47 @@ body {
 
 /* Ensure proper contrast for badges and status indicators */
 .scanner-badge.xss {
+    background-color: #FF9800;
     color: var(--text-primary);
 }
 
 .scanner-badge.sqli {
+    background-color: #F44336;
+    color: var(--text-primary);
+}
+
+.scanner-badge.csrf {
+    background-color: #9C27B0;
+    color: var(--text-primary);
+}
+
+.scanner-badge.ssrf {
+    background-color: #3F51B5;
+    color: var(--text-primary);
+}
+
+.scanner-badge.xxe {
+    background-color: #009688;
+    color: var(--text-primary);
+}
+
+.scanner-badge.idor {
+    background-color: #795548;
+    color: var(--text-primary);
+}
+
+.scanner-badge.broken_auth {
+    background-color: #607D8B;
+    color: var(--text-primary);
+}
+
+.scanner-badge.sensitive_data {
+    background-color: #E91E63;
+    color: var(--text-primary);
+}
+
+.scanner-badge.security_misconfig {
+    background-color: #2196F3;
     color: var(--text-primary);
 }
 
@@ -76,16 +113,90 @@ body {
 
 /* Ensure proper contrast for vulnerability items */
 .vulnerability-item {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--border-color);
+}
+
+.vulnerability-item.high {
+    border-left-color: var(--danger-color);
+}
+
+.vulnerability-item.medium {
+    border-left-color: var(--warning-color);
+}
+
+.vulnerability-item.low {
+    border-left-color: var(--info-color);
+}
+
+.vulnerability-item h6 {
     color: var(--text-primary);
+    margin-bottom: 0.5rem;
 }
 
 .vulnerability-item p {
     color: var(--text-primary);
-    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.vulnerability-details {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
 }
 
 .vulnerability-details span {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.vulnerability-details .severity {
+    background-color: rgba(220,53,69,0.2);
+    color: var(--danger-color);
+}
+
+.vulnerability-details .location {
+    background-color: rgba(108,117,125,0.2);
+    color: var(--text-secondary);
+}
+
+.evidence, .param, .payload {
+    background-color: rgba(0,0,0,0.3);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+    word-break: break-all;
+}
+
+.recommendations-section {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.recommendations-section h5 {
     color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.recommendation-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.recommendation-item i {
+    color: var(--warning-color);
 }
 
 /* Ensure proper contrast for terminal messages */
@@ -476,16 +587,6 @@ body {
     margin-right: 8px;
     min-width: 40px;
     text-align: center;
-}
-
-.scanner-badge.xss {
-    background-color: #FF9800;
-    color: var(--text-primary);
-}
-
-.scanner-badge.sqli {
-    background-color: #F44336;
-    color: var(--text-primary);
 }
 
 .scanner-url {

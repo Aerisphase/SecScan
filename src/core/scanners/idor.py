@@ -2,65 +2,86 @@ import logging
 from ..http_client import HttpClient
 from typing import List, Dict, Optional
 import re
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs, urlencode, urljoin
 
 logger = logging.getLogger(__name__)
 
-class XSSScanner:
+class IDORScanner:
     def __init__(self, client=None):
         # Инициализация HTTP клиента
         self.client = client if client else HttpClient()
         
-        # Список полезных нагрузок для тестирования XSS уязвимостей
-        self.payloads = [
-            # Базовые полезные нагрузки
-            '<script>alert(1)</script>',
-            '<img src=x onerror=alert(1)>',
-            '<svg onload=alert(1)>',
-            '<body onload=alert(1)>',
-            '<input autofocus onfocus=alert(1)>',
+        # Паттерны для определения ID в URL и параметрах
+        self.id_patterns = [
+            # Числовые ID
+            r'\bid\b',
+            r'\buser_id\b',
+            r'\baccount_id\b',
+            r'\bcustomer_id\b',
+            r'\border_id\b',
+            r'\bproduct_id\b',
+            r'\bpost_id\b',
+            r'\bcomment_id\b',
+            r'\bmessage_id\b',
+            r'\btransaction_id\b',
             
-            # Полезные нагрузки с кодировкой
-            '<script>alert(1)</script>'.encode('utf-8').hex(),
-            '<img src=x onerror=alert(1)>'.encode('utf-8').hex(),
+            # UUID и хеши
+            r'\buuid\b',
+            r'\bguid\b',
+            r'\bhash\b',
+            r'\btoken\b',
+            r'\breference\b',
+            r'\bcode\b',
             
-            # Полезные нагрузки с обходом фильтров
-            '<scr<script>ipt>alert(1)</scr</script>ipt>',
-            '<img src=x onerror=alert(1)//',
-            '<svg><script>alert(1)</script></svg>',
-            
-            # Полезные нагрузки с событиями
-            '<img src=x onmouseover=alert(1)>',
-            '<div onmouseover=alert(1)>XSS</div>',
-            '<a onmouseover=alert(1)>XSS</a>',
-            
-            # Полезные нагрузки с атрибутами
-            '<img src=x onerror=alert(1) x=>',
-            '<img src=x onerror=alert(1) x=',
-            '<img src=x onerror=alert(1) x',
-            
-            # Полезные нагрузки с JavaScript
-            'javascript:alert(1)',
-            'data:text/html,<script>alert(1)</script>',
-            'vbscript:msgbox(1)'
+            # Имена файлов и путей
+            r'\bfile\b',
+            r'\bpath\b',
+            r'\bname\b',
+            r'\bfilename\b',
+            r'\bdocument\b',
+            r'\battachment\b'
         ]
         
-        # Паттерны для поиска отраженных полезных нагрузок
-        self.reflection_patterns = [
-            r'<script[^>]*>.*?</script>',
-            r'<img[^>]*>',
-            r'<svg[^>]*>',
-            r'<body[^>]*>',
-            r'<input[^>]*>',
-            r'<div[^>]*>',
-            r'<a[^>]*>',
-            r'javascript:',
-            r'data:text/html',
-            r'vbscript:'
+        # Паттерны для определения конфиденциальных данных
+        self.sensitive_patterns = [
+            # Личные данные
+            r'\bemail\b',
+            r'\bphone\b',
+            r'\baddress\b',
+            r'\bssn\b',
+            r'\bcredit\b',
+            r'\bcard\b',
+            r'\bpassword\b',
+            
+            # Финансовая информация
+            r'\baccount\b',
+            r'\bbalance\b',
+            r'\btransaction\b',
+            r'\bpayment\b',
+            r'\binvoice\b',
+            
+            # Конфиденциальные документы
+            r'\bcontract\b',
+            r'\bagreement\b',
+            r'\breport\b',
+            r'\bconfidential\b',
+            r'\bsecret\b'
+        ]
+        
+        # Значения для тестирования ID
+        self.test_values = [
+            '1',  # Первая запись
+            '2',  # Вторая запись
+            '100',  # Большой номер
+            '999',  # Максимальный номер
+            'admin',  # Администратор
+            'root',  # Суперпользователь
+            'test',  # Тестовая запись
+            'demo'  # Демонстрационная запись
         ]
 
     def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
-        # Основной метод сканирования, который проверяет XSS уязвимости
+        # Основной метод сканирования, который проверяет IDOR уязвимости
         vulnerabilities = []
         
         try:
@@ -74,12 +95,12 @@ class XSSScanner:
                 vulnerabilities.extend(form_vulns)
             
         except Exception as e:
-            logger.error(f"XSS scan error: {str(e)}")
+            logger.error(f"IDOR scan error: {str(e)}")
         
         return vulnerabilities
 
     def _check_url_params(self, url: str) -> List[Dict]:
-        # Проверка параметров URL на XSS уязвимости
+        # Проверка параметров URL на IDOR уязвимости
         vulnerabilities = []
         try:
             # Парсинг URL для получения параметров
@@ -88,12 +109,16 @@ class XSSScanner:
             
             # Проверка каждого параметра
             for param, values in params.items():
+                # Проверка, является ли параметр ID
+                if not any(re.search(pattern, param, re.IGNORECASE) for pattern in self.id_patterns):
+                    continue
+                
                 for value in values:
-                    for payload in self.payloads:
+                    for test_value in self.test_values:
                         try:
-                            # Создание URL с внедренной полезной нагрузкой
+                            # Создание URL с тестовым значением
                             modified_params = params.copy()
-                            modified_params[param] = [payload]
+                            modified_params[param] = [test_value]
                             modified_query = urlencode(modified_params, doseq=True)
                             modified_url = parsed_url._replace(query=modified_query).geturl()
                             
@@ -103,12 +128,12 @@ class XSSScanner:
                                 continue
                             
                             # Проверка на уязвимость
-                            if self._is_vulnerable(response.text, payload):
+                            if self._is_vulnerable(response.text, value, test_value):
                                 vulnerabilities.append({
-                                    'type': 'XSS',
+                                    'type': 'IDOR',
                                     'url': modified_url,
-                                    'payload': payload,
-                                    'evidence': self._get_evidence(response.text, payload),
+                                    'payload': test_value,
+                                    'evidence': self._get_evidence(response.text, value, test_value),
                                     'severity': 'high',
                                     'param': param,
                                     'method': 'GET'
@@ -124,7 +149,7 @@ class XSSScanner:
         return vulnerabilities
 
     def _check_forms(self, url: str, forms: List[Dict]) -> List[Dict]:
-        # Проверка форм на XSS уязвимости
+        # Проверка форм на IDOR уязвимости
         vulnerabilities = []
         try:
             for form in forms:
@@ -137,17 +162,21 @@ class XSSScanner:
                     field_name = field.get('name')
                     field_type = field.get('type', 'text')
                     
-                    # Пропуск полей, не подходящих для XSS
-                    if field_type not in ['text', 'textarea', 'hidden', 'search', 'email', 'url']:
+                    # Проверка, является ли поле ID
+                    if not any(re.search(pattern, field_name, re.IGNORECASE) for pattern in self.id_patterns):
                         continue
                     
-                    for payload in self.payloads:
+                    # Пропуск полей, не подходящих для IDOR
+                    if field_type not in ['text', 'hidden', 'number']:
+                        continue
+                    
+                    for test_value in self.test_values:
                         try:
                             # Подготовка данных формы
                             form_data = {}
                             for f in form.get('fields', []):
                                 if f.get('name') == field_name:
-                                    form_data[f.get('name')] = payload
+                                    form_data[f.get('name')] = test_value
                                 else:
                                     form_data[f.get('name')] = f.get('value', '')
                             
@@ -161,12 +190,12 @@ class XSSScanner:
                                 continue
                             
                             # Проверка на уязвимость
-                            if self._is_vulnerable(response.text, payload):
+                            if self._is_vulnerable(response.text, field.get('value', ''), test_value):
                                 vulnerabilities.append({
-                                    'type': 'XSS',
+                                    'type': 'IDOR',
                                     'url': action,
-                                    'payload': payload,
-                                    'evidence': self._get_evidence(response.text, payload),
+                                    'payload': test_value,
+                                    'evidence': self._get_evidence(response.text, field.get('value', ''), test_value),
                                     'severity': 'high',
                                     'param': field_name,
                                     'method': method
@@ -181,22 +210,17 @@ class XSSScanner:
         
         return vulnerabilities
 
-    def _is_vulnerable(self, response_text: str, payload: str) -> bool:
-        # Проверка, является ли ответ уязвимым к XSS
+    def _is_vulnerable(self, response_text: str, original_value: str, test_value: str) -> bool:
+        # Проверка, является ли ответ уязвимым к IDOR
         try:
-            # Проверка отражения полезной нагрузки
-            if payload in response_text:
-                return True
-            
-            # Проверка отражения с кодировкой
-            encoded_payload = payload.encode('utf-8').hex()
-            if encoded_payload in response_text:
-                return True
-            
-            # Проверка паттернов отражения
-            for pattern in self.reflection_patterns:
+            # Проверка наличия конфиденциальных данных
+            for pattern in self.sensitive_patterns:
                 if re.search(pattern, response_text, re.IGNORECASE):
                     return True
+            
+            # Проверка отражения тестового значения
+            if test_value in response_text:
+                return True
             
             return False
         
@@ -204,26 +228,21 @@ class XSSScanner:
             logger.error(f"Vulnerability check error: {str(e)}")
             return False
 
-    def _get_evidence(self, response_text: str, payload: str) -> str:
+    def _get_evidence(self, response_text: str, original_value: str, test_value: str) -> str:
         # Получение доказательства уязвимости
         try:
-            # Поиск отраженной полезной нагрузки
-            if payload in response_text:
-                return f"Payload '{payload}' was reflected in the response"
-            
-            # Поиск отражения с кодировкой
-            encoded_payload = payload.encode('utf-8').hex()
-            if encoded_payload in response_text:
-                return f"Encoded payload '{encoded_payload}' was reflected in the response"
-            
-            # Поиск паттернов отражения
-            for pattern in self.reflection_patterns:
+            # Поиск конфиденциальных данных
+            for pattern in self.sensitive_patterns:
                 match = re.search(pattern, response_text, re.IGNORECASE)
                 if match:
-                    return f"XSS pattern '{match.group(0)}' was found in the response"
+                    return f"Sensitive data found: {match.group(0)}"
             
-            return "No direct evidence found"
+            # Поиск отражения тестового значения
+            if test_value in response_text:
+                return f"Test value '{test_value}' was reflected in the response"
+            
+            return "IDOR vulnerability detected"
         
         except Exception as e:
             logger.error(f"Evidence collection error: {str(e)}")
-            return "Error collecting evidence"
+            return "Error collecting evidence" 

@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scanStats.innerHTML = '';
         vulnerabilities.innerHTML = '';
         resultsCard.style.display = 'none';
+        terminalContent.innerHTML = '';
     }
 
     // Event Listeners
@@ -205,15 +206,27 @@ document.addEventListener('DOMContentLoaded', () => {
             line.classList.add('page-processed');
         }
         // Format scanner messages
-        else if (message.includes('Running') && (message.includes('XSS') || message.includes('SQLI'))) {
-            const scannerType = message.includes('XSS') ? 'XSS' : 'SQLI';
-            const url = message.split(' on ')[1];
+        else if (message.includes('Running') && message.includes('scanner')) {
+            const scannerTypes = ['XSS', 'SQLI', 'CSRF', 'SSRF', 'XXE', 'IDOR', 'BROKEN_AUTH', 'SENSITIVE_DATA', 'SECURITY_MISCONFIG'];
+            let scannerType = '';
             
-            messageSpan.innerHTML = `
-                <span class="scanner-badge ${scannerType.toLowerCase()}">${scannerType}</span>
-                <span class="scanner-url">${url}</span>
-            `;
-            line.classList.add('scanner-running');
+            for (const type of scannerTypes) {
+                if (message.includes(type)) {
+                    scannerType = type;
+                    break;
+                }
+            }
+            
+            if (scannerType) {
+                const url = message.split(' on ')[1];
+                messageSpan.innerHTML = `
+                    <span class="scanner-badge ${scannerType.toLowerCase()}">${scannerType}</span>
+                    <span class="scanner-url">${url}</span>
+                `;
+                line.classList.add('scanner-running');
+            } else {
+                messageSpan.textContent = message;
+            }
         }
         // Format crawling completion message
         else if (message.includes('Crawling completed')) {
@@ -275,92 +288,100 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 30000);
 
-    // Update scan form submission
-    document.getElementById('scanForm').addEventListener('submit', async (e) => {
+    // Handle scan form submission
+    scanForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const formData = {
-            target_url: document.getElementById('targetUrl').value,
-            scan_type: document.getElementById('scanType').value,
-            max_pages: document.getElementById('maxPages').value,
-            delay: document.getElementById('delay').value,
-            user_agent: document.getElementById('userAgent').value || undefined
-        };
+        // Get form data
+        const formData = new FormData(scanForm);
+        const targetUrl = formData.get('targetUrl');
+        const scanType = formData.get('scanType');
+        const delay = parseFloat(formData.get('delay'));
+        const maxPages = parseInt(formData.get('maxPages'));
+        const userAgent = formData.get('userAgent');
         
         try {
-            updateTerminal('Starting scan...', 'info');
-            updateTerminal(`Target: ${formData.target_url}`, 'info');
-            updateTerminal(`Scan type: ${formData.scan_type}`, 'info');
+            // Clear previous results
+            clearResults();
             
-            const response = await fetch('/scan', {
+            // Show loading state
+            updateTerminal('Starting scan...', 'info');
+            updateTerminal(`Target: ${targetUrl}`, 'info');
+            updateTerminal(`Scan type: ${scanType}`, 'info');
+            
+            // Start scan
+            const response = await fetch(`${API_URL}/scan`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': API_KEY
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    target_url: targetUrl,
+                    scan_type: scanType,
+                    delay: delay,
+                    max_pages: maxPages,
+                    user_agent: userAgent
+                })
             });
             
             if (!response.ok) {
-                if (response.status === 403) {
-                    localStorage.removeItem('secscan_api_key');
-                    throw new Error('Invalid API key. Please refresh the page and enter a valid API key.');
-                }
-                const error = await response.json();
-                throw new Error(error.detail || 'Scan failed');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
-            updateTerminal('Scan completed successfully', 'info');
-            displayResults(result);
+            
+            // Update UI with results
+            updateResults(result);
             
         } catch (error) {
+            console.error('Scan error:', error);
             updateTerminal(`Error: ${error.message}`, 'error');
         }
     });
 
-    // Display results
-    function displayResults(result) {
-        // Show the results card
-        resultsCard.style.display = 'block';
+    // Update results display
+    function updateResults(result) {
+        if (!result || !result.results) return;
         
-        // Display statistics
+        const { results } = result;
+        
+        // Update stats
         scanStats.innerHTML = `
-            <div class="stats-card">
-                <div class="stats-item">
-                    <span>Pages Crawled:</span>
-                    <span>${result.stats.pages_crawled || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Links Found:</span>
-                    <span>${result.stats.links_found || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Forms Found:</span>
-                    <span>${result.stats.forms_found || 0}</span>
-                </div>
-                <div class="stats-item">
-                    <span>Elapsed Time:</span>
-                    <span>${(result.stats.elapsed_time || 0).toFixed(2)}s</span>
-                </div>
+            <div class="stat-item">
+                <span class="stat-label">Pages Crawled:</span>
+                <span class="stat-value">${results.pages_crawled}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Vulnerabilities Found:</span>
+                <span class="stat-value">${results.vulnerabilities_found}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Scan Duration:</span>
+                <span class="stat-value">${((result.end_time - result.start_time) / 1000).toFixed(2)}s</span>
             </div>
         `;
-
-        // Display vulnerabilities
-        if (result.vulnerabilities && result.vulnerabilities.length > 0) {
-            vulnerabilities.innerHTML = result.vulnerabilities.map(vuln => `
-                <div class="vulnerability-item ${vuln.severity.toLowerCase()}">
-                    <h6>${vuln.title}</h6>
-                    <p>${vuln.description}</p>
+        
+        // Update vulnerabilities list
+        if (results.vulnerabilities && results.vulnerabilities.length > 0) {
+            vulnerabilities.innerHTML = results.vulnerabilities.map((vuln, index) => `
+                <div class="vulnerability-item ${vuln.severity?.toLowerCase() || 'medium'}">
+                    <h3>${index + 1}. ${vuln.type} at ${vuln.url}</h3>
                     <div class="vulnerability-details">
-                        <span class="severity">${vuln.severity}</span>
-                        <span class="location">${vuln.location}</span>
+                        <p><strong>Parameter:</strong> ${vuln.param || 'N/A'}</p>
+                        <p><strong>Payload:</strong> ${vuln.payload || 'N/A'}</p>
+                        <p><strong>Evidence:</strong> ${vuln.evidence || 'N/A'}</p>
+                        <p><strong>Severity:</strong> ${vuln.severity || 'medium'}</p>
+                        <p><strong>Description:</strong> ${vuln.description || 'No description available'}</p>
                     </div>
                 </div>
             `).join('');
         } else {
             vulnerabilities.innerHTML = '<div class="alert alert-success">No vulnerabilities found!</div>';
         }
+        
+        // Show results card
+        resultsCard.style.display = 'block';
         
         // Scroll to results
         resultsCard.scrollIntoView({ behavior: 'smooth' });
