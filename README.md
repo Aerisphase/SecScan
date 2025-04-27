@@ -128,29 +128,8 @@ python scanner.py --target https://example.com \
 - Terminal Output
 - Real-time Logs
 
-## 🤝 Contributing
 
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
 
-## 📄 License
 
-This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This tool is for educational and authorized testing purposes only. Always obtain permission before scanning any website or application.
-
-## 📞 Support
-
-For support, please:
-1. Check the [documentation](docs/)
-2. Open an [issue](https://github.com/Aerisphase/SecScan/issues)
-3. Join our [Discord community](https://discord.gg/secscan)
-
-## 🙏 Acknowledgments
-
-- OWASP for vulnerability definitions
-- Open-source security tools that inspired this project
-- Contributors and maintainers
 
 
