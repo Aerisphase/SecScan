@@ -3,6 +3,7 @@ import io
 import argparse
 import logging
 import asyncio
+import json
 from typing import Dict, Optional, List, Any
 from .crawler import AdvancedCrawler
 from .scanners import (
@@ -85,79 +86,175 @@ def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
 
 class Scanner:
     def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        # Create adapter for aiohttp client
-        self.client = AiohttpClientAdapter(config['client'])
+        try:
+            logger.info("Initializing Scanner with configuration")
+            logger.debug(f"Configuration received: {json.dumps(config, indent=2)}")
+            
+            # Validate configuration structure
+            if not isinstance(config, dict):
+                raise ValueError("Configuration must be a dictionary")
+                
+            if 'client' not in config:
+                logger.error("Configuration missing 'client' section")
+                raise ValueError("Configuration must contain 'client' section")
+                
+            if 'scanners' not in config:
+                logger.error("Configuration missing 'scanners' section")
+                raise ValueError("Configuration must contain 'scanners' section")
+                
+            if 'crawler' not in config:
+                logger.error("Configuration missing 'crawler' section")
+                raise ValueError("Configuration must contain 'crawler' section")
+                
+            # Validate client configuration
+            client_config = config['client']
+            if not isinstance(client_config, dict):
+                logger.error("Client configuration is not a dictionary")
+                raise ValueError("Client configuration must be a dictionary")
+                
+            required_client_fields = ['timeout', 'max_retries', 'delay', 'user_agent', 'verify_ssl']
+            for field in required_client_fields:
+                if field not in client_config:
+                    logger.error(f"Client configuration missing required field: {field}")
+                    raise ValueError(f"Client configuration missing required field: {field}")
+                    
+            # Validate crawler configuration
+            crawler_config = config['crawler']
+            if not isinstance(crawler_config, dict):
+                logger.error("Crawler configuration is not a dictionary")
+                raise ValueError("Crawler configuration must be a dictionary")
+                
+            required_crawler_fields = ['max_pages', 'delay', 'client']
+            for field in required_crawler_fields:
+                if field not in crawler_config:
+                    logger.error(f"Crawler configuration missing required field: {field}")
+                    raise ValueError(f"Crawler configuration missing required field: {field}")
+                    
+            # Validate client configuration in crawler
+            crawler_client_config = crawler_config['client']
+            if not isinstance(crawler_client_config, dict):
+                logger.error("Crawler client configuration is not a dictionary")
+                raise ValueError("Crawler client configuration must be a dictionary")
+                
+            for field in required_client_fields:
+                if field not in crawler_client_config:
+                    logger.error(f"Crawler client configuration missing required field: {field}")
+                    raise ValueError(f"Crawler client configuration missing required field: {field}")
+                    
+            # Validate scanners configuration
+            scanners_config = config['scanners']
+            if not isinstance(scanners_config, dict):
+                logger.error("Scanners configuration is not a dictionary")
+                raise ValueError("Scanners configuration must be a dictionary")
+                
+            if not any(scanners_config.values()):
+                logger.error("No scanners are enabled")
+                raise ValueError("At least one scanner must be enabled")
+                
+            self.config = config
+            logger.info("Creating AiohttpClientAdapter")
+            self.client = AiohttpClientAdapter(config['client'])
+            logger.info("Scanner initialized successfully")
+            
+        except ValueError as e:
+            logger.error(f"Scanner configuration validation failed: {str(e)}")
+            logger.error(f"Configuration structure: {json.dumps(config, indent=2)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during scanner initialization: {str(e)}")
+            logger.error(f"Configuration structure: {json.dumps(config, indent=2)}")
+            raise
         
     async def scan_page(self, url: str) -> List[Dict[str, Any]]:
         """Scan a single page for vulnerabilities"""
-        vulnerabilities = []
-        
-        # Initialize enabled scanners
-        scanners = []
-        logger.info("Initializing scanners...")
-        
-        if self.config['scanners'].get('xss', True):
-            logger.info("Initializing XSS scanner")
-            scanners.append(XSSScanner(self.client))
-        if self.config['scanners'].get('sql_injection', True):
-            logger.info("Initializing SQL Injection scanner")
-            scanners.append(SQLInjectionScanner(self.client))
-        if self.config['scanners'].get('csrf', True):
-            logger.info("Initializing CSRF scanner")
-            scanners.append(CSRFScanner(self.client))
-        if self.config['scanners'].get('ssrf', True):
-            logger.info("Initializing SSRF scanner")
-            scanners.append(SSRFScanner(self.client))
-        if self.config['scanners'].get('xxe', True):
-            logger.info("Initializing XXE scanner")
-            scanners.append(XXEScanner(self.client))
-        if self.config['scanners'].get('idor', True):
-            logger.info("Initializing IDOR scanner")
-            scanners.append(IDORScanner(self.client))
-        if self.config['scanners'].get('broken_auth', True):
-            logger.info("Initializing Broken Auth scanner")
-            scanners.append(BrokenAuthScanner(self.client))
-        if self.config['scanners'].get('sensitive_data', True):
-            logger.info("Initializing Sensitive Data scanner")
-            scanners.append(SensitiveDataScanner(self.client))
-        if self.config['scanners'].get('security_misconfig', True):
-            logger.info("Initializing Security Misconfig scanner")
-            scanners.append(SecurityMisconfigScanner(self.client))
+        try:
+            vulnerabilities = []
+            scanners = []
+            logger.info("Initializing scanners...")
             
-        logger.info(f"Total scanners initialized: {len(scanners)}")
-        
-        # Run all scanners concurrently
-        tasks = []
-        for scanner in scanners:
-            try:
-                logger.info(f"Starting {scanner.__class__.__name__} on {url}")
-                task = asyncio.create_task(scanner.scan(url))
-                tasks.append(task)
-            except Exception as e:
-                logger.error(f"Error initializing {scanner.__class__.__name__}: {str(e)}")
-                logger.error(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
+            # Map of scanner names to their classes
+            scanner_classes = {
+                'xss': XSSScanner,
+                'sql_injection': SQLInjectionScanner,
+                'csrf': CSRFScanner,
+                'ssrf': SSRFScanner,
+                'xxe': XXEScanner,
+                'idor': IDORScanner,
+                'broken_auth': BrokenAuthScanner,
+                'sensitive_data': SensitiveDataScanner,
+                'security_misconfig': SecurityMisconfigScanner
+            }
+            
+            # Initialize all enabled scanners
+            for scanner_name, enabled in self.config['scanners'].items():
+                if enabled:
+                    try:
+                        scanner_class = scanner_classes.get(scanner_name)
+                        if scanner_class:
+                            logger.info(f"Initializing {scanner_name} scanner")
+                            scanner = scanner_class(self.client)
+                            scanners.append(scanner)
+                        else:
+                            logger.warning(f"Unknown scanner type: {scanner_name}")
+                    except Exception as e:
+                        logger.error(f"Failed to initialize {scanner_name} scanner: {str(e)}")
+                        logger.error(f"Error details: {type(e).__name__}: {str(e)}", exc_info=True)
+            
+            if not scanners:
+                raise ValueError("No valid scanners were initialized")
                 
-        # Wait for all scanners to complete
-        logger.info(f"Waiting for {len(tasks)} scanner tasks to complete...")
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Process results
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                logger.error(f"Scanner {scanners[i].__class__.__name__} failed: {str(result)}")
-                logger.error(f"Error details: {type(result).__name__}: {str(result)}", exc_info=True)
-            elif isinstance(result, list):
-                vulnerabilities.extend(result)
-                logger.info(f"Scanner {scanners[i].__class__.__name__} found {len(result)} vulnerabilities")
+            logger.info(f"Total scanners initialized: {len(scanners)}")
+            
+            # Run all scanners concurrently
+            tasks = []
+            for scanner in scanners:
+                try:
+                    task = asyncio.create_task(scanner.scan(url))
+                    tasks.append(task)
+                except Exception as e:
+                    logger.error(f"Failed to create task for scanner: {str(e)}")
+            
+            if not tasks:
+                raise ValueError("No scanner tasks were created")
                 
-        return vulnerabilities
+            # Wait for all scanners to complete
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"Scanner error: {str(result)}")
+                elif isinstance(result, list):
+                    vulnerabilities.extend(result)
+            
+            return vulnerabilities
+            
+        except ValueError as e:
+            logger.error(f"Scan page validation error: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during page scan: {str(e)}")
+            raise
 
     async def scan(self, target_url: str) -> Dict[str, Any]:
         """Main scanning method"""
         try:
-            # Initialize crawler
-            crawler = AdvancedCrawler(self.config['crawler'])
+            # Initialize crawler with crawler configuration
+            crawler_config = {
+                'crawler': {
+                    'max_pages': self.config['crawler']['max_pages'],
+                    'delay': self.config['crawler']['delay'],
+                    'client': {
+                        'timeout': self.config['client']['timeout'],
+                        'max_retries': self.config['client']['max_retries'],
+                        'delay': self.config['client']['delay'],
+                        'user_agent': self.config['client']['user_agent'],
+                        'verify_ssl': self.config['client']['verify_ssl']
+                    }
+                }
+            }
+            logger.info(f"Initializing crawler with configuration: {json.dumps(crawler_config, indent=2)}")
+            crawler = AdvancedCrawler(crawler_config)
             
             # Crawl the target
             logger.info(f"Starting crawl of {target_url}")
