@@ -232,6 +232,10 @@ Using Components with Known Vulnerabilities
 
 Insufficient Logging & Monitoring
 
+To train AI:
+
+python src/ai/training/train.py
+
 
 
 
