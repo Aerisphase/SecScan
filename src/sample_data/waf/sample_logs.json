@@ -1,0 +1,29 @@
+[
+    {
+        "timestamp": "2024-04-28T12:00:00Z",
+        "client_ip": "192.168.1.1",
+        "request_method": "GET",
+        "request_uri": "/admin.php?id=1' OR '1'='1",
+        "rule_id": "941100",
+        "rule_message": "SQL Injection Attack Detected",
+        "severity": "CRITICAL"
+    },
+    {
+        "timestamp": "2024-04-28T12:01:00Z",
+        "client_ip": "192.168.1.2",
+        "request_method": "GET",
+        "request_uri": "/search?q=<script>alert(1)</script>",
+        "rule_id": "941110",
+        "rule_message": "XSS Attack Detected",
+        "severity": "HIGH"
+    },
+    {
+        "timestamp": "2024-04-28T12:02:00Z",
+        "client_ip": "192.168.1.3",
+        "request_method": "POST",
+        "request_uri": "/api/users",
+        "rule_id": "949110",
+        "rule_message": "Broken Access Control Attempt",
+        "severity": "MEDIUM"
+    }
+] 

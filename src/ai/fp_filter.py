@@ -11,7 +11,7 @@ class FalsePositiveFilter:
             self.model = RandomForestClassifier(n_estimators=100)
         
     def extract_features(self, vulnerability: Dict[str, Any]) -> pd.DataFrame:
-        """Извлекает признаки из данных об уязвимости"""
+        """Extract features from vulnerability data"""
         features = {
             'payload_length': len(vulnerability.get('payload', '')),
             'response_similarity': vulnerability.get('similarity', 0),
@@ -20,7 +20,7 @@ class FalsePositiveFilter:
         return pd.DataFrame([features])
     
     def predict(self, vulnerability: Dict[str, Any]) -> bool:
-        """Определяет, является ли уязвимость ложным срабатыванием"""
+        """Determine if the vulnerability is a false positive"""
         try:
             features = self.extract_features(vulnerability)
             return bool(self.model.predict(features)[0])

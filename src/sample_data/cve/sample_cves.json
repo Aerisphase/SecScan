@@ -1,0 +1,23 @@
+[
+    {
+        "cve": {
+            "id": "CVE-2024-1234",
+            "descriptions": [{"value": "SQL Injection vulnerability in login form"}],
+            "metrics": {"cvssMetricV31": [{"cvssData": {"baseScore": 7.5}}]}
+        }
+    },
+    {
+        "cve": {
+            "id": "CVE-2024-1235",
+            "descriptions": [{"value": "Cross-Site Scripting (XSS) in search functionality"}],
+            "metrics": {"cvssMetricV31": [{"cvssData": {"baseScore": 6.5}}]}
+        }
+    },
+    {
+        "cve": {
+            "id": "CVE-2024-1236",
+            "descriptions": [{"value": "Broken Access Control in admin panel"}],
+            "metrics": {"cvssMetricV31": [{"cvssData": {"baseScore": 8.0}}]}
+        }
+    }
+] 

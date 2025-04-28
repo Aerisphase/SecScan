@@ -24,28 +24,28 @@ class VulnerabilityRecommender:
                 'Broken Authentication'
             ],
             'description': [
-                'SQL-инъекция возникает, когда ненадежные данные используются в SQL-запросах',
-                'Межсайтовый скриптинг позволяет злоумышленникам внедрять клиентские скрипты',
-                'Подделка межсайтовых запросов заставляет пользователей выполнять нежелательные действия',
-                'Подделка серверных запросов позволяет злоумышленникам получать доступ к внутренним ресурсам',
-                'Обработка внешних XML-сущностей может привести к раскрытию информации',
-                'Небезопасные прямые ссылки на объекты раскрывают внутренние детали реализации',
-                'Уязвимости загрузки файлов могут привести к выполнению удаленного кода',
-                'Внедрение команд позволяет выполнять произвольные команды',
-                'Обход пути позволяет получить доступ к файлам вне корневой директории',
-                'Неисправные механизмы аутентификации могут быть обойдены'
+                'SQL injection occurs when untrusted data is used in SQL queries',
+                'Cross-site scripting allows attackers to inject client-side scripts',
+                'Cross-site request forgery forces users to perform unwanted actions',
+                'Server-side request forgery allows attackers to access internal resources',
+                'XML external entity processing can lead to information disclosure',
+                'Insecure direct object references expose internal implementation details',
+                'File upload vulnerabilities can lead to remote code execution',
+                'Command injection allows executing arbitrary commands',
+                'Path traversal allows accessing files outside the root directory',
+                'Broken authentication mechanisms can be bypassed'
             ],
             'recommendations': [
-                'Используйте параметризованные запросы или подготовленные выражения\nРеализуйте проверку входных данных\nИспользуйте ORM-фреймворки\nПрименяйте принцип наименьших привилегий',
-                'Реализуйте Content Security Policy (CSP)\nИспользуйте кодирование вывода\nПроверяйте и санируйте пользовательский ввод\nИспользуйте современные фреймворки со встроенной защитой от XSS',
-                'Реализуйте CSRF-токены\nИспользуйте атрибут SameSite для куки\nПроверяйте заголовки origin\nРеализуйте паттерн двойной отправки куки',
-                'Проверяйте и санируйте URL\nИспользуйте белый список разрешенных доменов\nРеализуйте сегментацию сети\nИспользуйте правильную аутентификацию',
-                'Отключите обработку DTD\nИспользуйте безопасные XML-парсеры\nРеализуйте проверку входных данных\nИспользуйте белый список разрешенных сущностей',
-                'Реализуйте правильный контроль доступа\nИспользуйте косвенные ссылки на объекты\nПроверяйте права пользователей\nРеализуйте правильное управление сессиями',
-                'Проверяйте типы и расширения файлов\nИспользуйте безопасные имена файлов\nРеализуйте проверку на вирусы\nХраните файлы вне корневой директории',
-                'Используйте безопасные API для выполнения команд\nРеализуйте проверку входных данных\nИспользуйте белый список\nПрименяйте принцип наименьших привилегий',
-                'Проверяйте пути к файлам\nИспользуйте безопасные API для работы с файлами\nРеализуйте правильный контроль доступа\nИспользуйте белый список',
-                'Реализуйте многофакторную аутентификацию\nИспользуйте безопасную политику паролей\nРеализуйте блокировку учетной записи\nИспользуйте безопасное управление сессиями'
+                'Use parameterized queries or prepared statements\nImplement input validation\nUse ORM frameworks\nApply the principle of least privilege',
+                'Implement Content Security Policy (CSP)\nUse output encoding\nValidate and sanitize user input\nUse modern frameworks with built-in XSS protection',
+                'Implement CSRF tokens\nUse SameSite attribute for cookies\nVerify origin headers\nImplement double submit cookie pattern',
+                'Validate and sanitize URLs\nUse whitelist of allowed domains\nImplement network segmentation\nUse proper authentication',
+                'Disable DTD processing\nUse secure XML parsers\nImplement input validation\nUse whitelist of allowed entities',
+                'Implement proper access control\nUse indirect object references\nVerify user permissions\nImplement proper session management',
+                'Validate file types and extensions\nUse secure file names\nImplement virus checking\nStore files outside the root directory',
+                'Use secure APIs for command execution\nImplement input validation\nUse whitelist\nApply the principle of least privilege',
+                'Validate file paths\nUse secure file handling APIs\nImplement proper access control\nUse whitelist',
+                'Implement multi-factor authentication\nUse secure password policy\nImplement account locking\nUse secure session management'
             ],
             'severity': ['high', 'high', 'medium', 'high', 'high', 'medium', 'high', 'high', 'medium', 'high'],
             'prevention_score': [0.95, 0.90, 0.85, 0.88, 0.92, 0.80, 0.93, 0.94, 0.82, 0.87]

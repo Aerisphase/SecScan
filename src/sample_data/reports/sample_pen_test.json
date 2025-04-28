@@ -1,0 +1,28 @@
+{
+    "findings": [
+        {
+            "vulnerability": "SQL Injection",
+            "severity": "Critical",
+            "description": "SQL injection vulnerability found in the login form. Attackers can bypass authentication using SQL injection techniques.",
+            "remediation": "Implement parameterized queries and input validation. Use prepared statements for all database queries.",
+            "payload": "' OR '1'='1",
+            "is_false_positive": false
+        },
+        {
+            "vulnerability": "Cross-Site Scripting (XSS)",
+            "severity": "High",
+            "description": "Reflected XSS vulnerability in the search functionality. User input is not properly sanitized before being displayed.",
+            "remediation": "Implement proper input sanitization and output encoding. Use Content Security Policy headers.",
+            "payload": "<script>alert(1)</script>",
+            "is_false_positive": false
+        },
+        {
+            "vulnerability": "Command Injection",
+            "severity": "Critical",
+            "description": "Command injection vulnerability in the system diagnostics page. User input is directly passed to system commands.",
+            "remediation": "Implement proper input validation and use safe APIs for system commands. Avoid using shell commands directly.",
+            "payload": "; cat /etc/passwd",
+            "is_false_positive": false
+        }
+    ]
+} 

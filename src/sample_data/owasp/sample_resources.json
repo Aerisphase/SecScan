@@ -1,0 +1,32 @@
+[
+    {
+        "title": "OWASP Top 10 2023",
+        "categories": [
+            {
+                "id": "A01",
+                "name": "Broken Access Control",
+                "description": "Access control vulnerabilities that allow unauthorized access"
+            },
+            {
+                "id": "A02",
+                "name": "Cryptographic Failures",
+                "description": "Vulnerabilities related to cryptography and encryption"
+            },
+            {
+                "id": "A03",
+                "name": "Injection",
+                "description": "SQL, NoSQL, OS, and LDAP injection vulnerabilities"
+            },
+            {
+                "id": "A04",
+                "name": "Insecure Design",
+                "description": "Security flaws in the design of applications"
+            },
+            {
+                "id": "A05",
+                "name": "Security Misconfiguration",
+                "description": "Insecure default configurations and incomplete configurations"
+            }
+        ]
+    }
+] 

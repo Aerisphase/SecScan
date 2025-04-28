@@ -1,0 +1,27 @@
+[
+  {
+    "timestamp": "2024-04-28 23:34:12",
+    "message": "[2024-04-28 23:34:12] [ModSecurity] [id \"941100\"] [msg \"SQL Injection Attack Detected via libinjection\"] [data \"Matched Data: 1=1 found within ARGS:query\"] [severity \"CRITICAL\"]",
+    "source": "C:\\Users\\ashay\\Documents\\GitHub\\SecScan\\src\\sample_data\\waf\\modsec_audit.log"
+  },
+  {
+    "timestamp": "2024-04-28 23:34:13",
+    "message": "[2024-04-28 23:34:13] [ModSecurity] [id \"941110\"] [msg \"XSS Attack Detected via libinjection\"] [data \"Matched Data: <script>alert(1)</script> found within ARGS:comment\"] [severity \"HIGH\"]",
+    "source": "C:\\Users\\ashay\\Documents\\GitHub\\SecScan\\src\\sample_data\\waf\\modsec_audit.log"
+  },
+  {
+    "timestamp": "2024-04-28 23:34:14",
+    "message": "[2024-04-28 23:34:14] [ModSecurity] [id \"932100\"] [msg \"Remote Command Execution: Unix Shell Expression Found\"] [data \"Matched Data: ; cat /etc/passwd found within ARGS:cmd\"] [severity \"CRITICAL\"]",
+    "source": "C:\\Users\\ashay\\Documents\\GitHub\\SecScan\\src\\sample_data\\waf\\modsec_audit.log"
+  },
+  {
+    "timestamp": "2024-04-28 23:34:15",
+    "message": "[2024-04-28 23:34:15] [ModSecurity] [id \"932160\"] [msg \"Remote Command Execution: Windows Command Injection\"] [data \"Matched Data: & dir found within ARGS:command\"] [severity \"CRITICAL\"]",
+    "source": "C:\\Users\\ashay\\Documents\\GitHub\\SecScan\\src\\sample_data\\waf\\modsec_audit.log"
+  },
+  {
+    "timestamp": "2024-04-28 23:34:16",
+    "message": "[2024-04-28 23:34:16] [ModSecurity] [id \"932130\"] [msg \"Restricted SQL Character Anomaly Detection Alert - Total # of special characters exceeded\"] [data \"Matched Data: ' OR '1'='1 found within ARGS:username\"] [severity \"HIGH\"]",
+    "source": "C:\\Users\\ashay\\Documents\\GitHub\\SecScan\\src\\sample_data\\waf\\modsec_audit.log"
+  }
+]

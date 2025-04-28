@@ -1,0 +1,23 @@
+[
+    {
+        "title": "SQL Injection in Login Form",
+        "description": "Login form vulnerable to SQL injection due to lack of parameterized queries",
+        "severity": "High",
+        "impact": "Full database access",
+        "recommendation": "Use parameterized queries and input validation"
+    },
+    {
+        "title": "XSS in Search Functionality",
+        "description": "Search functionality vulnerable to stored XSS attacks",
+        "severity": "Medium",
+        "impact": "Session hijacking and data theft",
+        "recommendation": "Implement proper output encoding"
+    },
+    {
+        "title": "Broken Access Control in Admin Panel",
+        "description": "Admin panel accessible without proper authentication",
+        "severity": "Critical",
+        "impact": "Unauthorized administrative access",
+        "recommendation": "Implement proper authentication and authorization"
+    }
+] 

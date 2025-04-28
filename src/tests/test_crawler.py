@@ -5,10 +5,10 @@ from bs4 import BeautifulSoup
 import requests
 from urllib.parse import urljoin
 
-# Фикстуры для тестов
+# Test fixtures
 @pytest.fixture
 def mock_response():
-    """Фикстура для мокирования HTTP-ответов"""
+    """Fixture for mocking HTTP responses"""
     def _create_mock(content="", status_code=200, content_type="text/html"):
         mock = Mock()
         mock.status_code = status_code
@@ -19,10 +19,10 @@ def mock_response():
 
 @pytest.fixture
 def test_crawler():
-    """Фикстура для создания тестового краулера"""
+    """Fixture for creating a test crawler"""
     return AdvancedCrawler("http://test.com", max_pages=10, delay=0)
 
-# Тестовые данные
+# Test data
 SIMPLE_HTML = """
 <html>
     <body>
@@ -35,7 +35,7 @@ SIMPLE_HTML = """
 </html>
 """
 
-# 1. Тесты инициализации
+# 1. Initialization tests
 def test_crawler_initialization(test_crawler):
     assert test_crawler.base_url == "http://test.com"
     assert test_crawler.max_pages == 10
@@ -43,7 +43,7 @@ def test_crawler_initialization(test_crawler):
     assert len(test_crawler.visited_urls) == 0
     assert "Mozilla/5.0" in test_crawler.session.headers['User-Agent']
 
-# 2. Тесты валидации URL
+# 2. URL validation tests
 @pytest.mark.parametrize("url,expected", [
     ("http://test.com/page", True),
     ("https://test.com/page", True),
@@ -55,7 +55,7 @@ def test_crawler_initialization(test_crawler):
 def test_is_valid_url(test_crawler, url, expected):
     assert test_crawler.is_valid_url(url) == expected
 
-# 3. Тесты нормализации URL
+# 3. URL normalization tests
 def test_normalize_url(test_crawler):
     test_cases = [
         ("http://test.com/page#anchor", "http://test.com/page"),
@@ -66,7 +66,7 @@ def test_normalize_url(test_crawler):
     for url, expected in test_cases:
         assert test_crawler.normalize_url(url) == expected
 
-# 4. Тесты извлечения ссылок
+# 4. Link extraction tests
 def test_extract_links(test_crawler):
     html = """
     <html>
@@ -82,7 +82,7 @@ def test_extract_links(test_crawler):
     assert "http://test.com/image.png" in links
     assert "http://test.com/script.js" in links
 
-# 5. Тесты извлечения форм
+# 5. Form extraction tests
 def test_extract_forms(test_crawler):
     html = """
     <form action="/login" method="post">
@@ -98,7 +98,7 @@ def test_extract_forms(test_crawler):
     assert len(forms[0]['inputs']) == 2
     assert forms[0]['inputs'][0]['name'] == "username"
 
-# 6. Тесты API endpoints в JavaScript
+# 6. API endpoints in JavaScript tests
 def test_extract_api_endpoints(test_crawler):
     html = """
     <script>
@@ -112,10 +112,10 @@ def test_extract_api_endpoints(test_crawler):
     assert "http://test.com/api/users" in links
     assert test_crawler.stats['api_endpoints'] == 2
 
-# 7. Интеграционный тест с моками
+# 7. Integration test with mocks
 @patch('core.crawler.requests.Session.get')
 def test_crawl_integration(mock_get, test_crawler):
-    # Настройка моков
+    # Mock setup
     mock_responses = {
         "http://test.com": mock_response(SIMPLE_HTML),
         "http://test.com/page1": mock_response("<html>Page 1</html>"),
@@ -127,16 +127,16 @@ def test_crawl_integration(mock_get, test_crawler):
     
     mock_get.side_effect = side_effect
     
-    # Запуск краулера
+    # Start crawler
     results = test_crawler.crawl()
     
-    # Проверки
-    assert len(results['urls']) == 3  # Главная + page1 + submit
+    # Assertions
+    assert len(results['urls']) == 3  # Home page + page1 + submit
     assert len(results['forms']) == 1
     assert test_crawler.stats['pages_crawled'] == 3
     assert test_crawler.stats['links_found'] >= 2
 
-# 8. Тест обработки ошибок
+# 8. Error handling test
 @patch('core.crawler.requests.Session.get')
 def test_error_handling(mock_get, test_crawler):
     mock_get.side_effect = requests.exceptions.ConnectionError("Failed to connect")
@@ -146,7 +146,7 @@ def test_error_handling(mock_get, test_crawler):
     assert len(results['urls']) == 0
     assert len(test_crawler.visited_urls) == 0
 
-# 9. Тест статистики
+# 9. Statistics collection test
 def test_stats_collection(test_crawler, mock_response):
     with patch('core.crawler.requests.Session.get', 
                return_value=mock_response(SIMPLE_HTML)):
@@ -156,12 +156,12 @@ def test_stats_collection(test_crawler, mock_response):
         assert test_crawler.stats['forms_found'] == 1
         assert test_crawler.stats['api_endpoints'] == 0
 
-# 10. Тест ограничения max_pages
+# 10. max_pages limit test
 @patch('core.crawler.requests.Session.get')
 def test_max_pages_limit(mock_get, mock_response):
     crawler = AdvancedCrawler("http://test.com", max_pages=2)
     
-    # Все страницы возвращают ссылки на другие страницы
+    # All pages return links to other pages
     mock_get.return_value = mock_response("""
     <html>
         <a href="/page1">1</a>

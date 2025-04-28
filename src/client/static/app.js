@@ -489,10 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         param: 'username',
                         method: 'POST',
                         recommendations: [
-                            'Используйте параметризованные запросы или подготовленные выражения',
-                            'Реализуйте проверку входных данных',
-                            'Используйте ORM-фреймворки',
-                            'Применяйте принцип наименьших привилегий'
+                            'Use parameterized queries or prepared statements',
+                            'Implement input validation',
+                            'Use ORM frameworks',
+                            'Apply the principle of least privilege'
                         ],
                         prevention_score: 0.95,
                         confidence: 0.98
@@ -506,10 +506,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         param: 'q',
                         method: 'GET',
                         recommendations: [
-                            'Реализуйте Content Security Policy (CSP)',
-                            'Используйте кодирование вывода',
-                            'Проверяйте и санируйте пользовательский ввод',
-                            'Используйте современные фреймворки со встроенной защитой от XSS'
+                            'Implement Content Security Policy (CSP)',
+                            'Use output encoding',
+                            'Validate and sanitize user input',
+                            'Use modern frameworks with built-in XSS protection'
                         ],
                         prevention_score: 0.90,
                         confidence: 0.95
@@ -523,10 +523,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         param: 'profile_data',
                         method: 'POST',
                         recommendations: [
-                            'Реализуйте CSRF-токены',
-                            'Используйте атрибут SameSite для куки',
-                            'Проверяйте заголовки origin',
-                            'Реализуйте паттерн двойной отправки куки'
+                            'Implement CSRF tokens',
+                            'Use SameSite attribute for cookies',
+                            'Verify origin headers',
+                            'Implement double submit cookie pattern'
                         ],
                         prevention_score: 0.85,
                         confidence: 0.92

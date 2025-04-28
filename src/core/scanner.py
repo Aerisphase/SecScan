@@ -6,12 +6,12 @@ from typing import Dict, Optional, List
 from .crawler import AdvancedCrawler
 from .scanners import SQLiScanner, XSSScanner
 
-# Настройка кодировки для Windows
+# Set up encoding for Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 def setup_logging():
-    """Настройка системы логирования"""
+    """Set up logging system"""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -162,14 +162,14 @@ class Scanner:
             return []
 
 def print_results(results: Dict):
-    """Вывод результатов в консоль"""
+    """Print results to console"""
     logger = logging.getLogger('Reporter')
     
     if not results:
         logger.error("No results to display")
         return
 
-    # Вывод статистики
+    # Print statistics
     stats = results.get('stats', {})
     logger.info(
         f"\nScan completed\n"
@@ -178,14 +178,14 @@ def print_results(results: Dict):
         f"Forms found: {stats.get('forms_found', 0)}"
     )
 
-    # Вывод рекомендаций по безопасности
+    # Print security recommendations
     recommendations = results.get('security_recommendations', [])
     if recommendations:
         logger.warning("\nSecurity Recommendations:")
         for i, rec in enumerate(recommendations, 1):
             logger.warning(f"[{i}] {rec}")
 
-    # Вывод уязвимостей
+    # Print vulnerabilities
     vulnerabilities = results.get('vulnerabilities', [])
     if vulnerabilities:
         logger.critical(f"\nFound {len(vulnerabilities)} vulnerabilities:")

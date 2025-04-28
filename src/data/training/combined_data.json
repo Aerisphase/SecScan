@@ -1,0 +1,148 @@
+{
+  "cve_data": [
+    {
+      "cve": {
+        "id": "CVE-2024-1234",
+        "descriptions": [
+          {
+            "value": "SQL Injection vulnerability in login form"
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "cvssData": {
+                "baseScore": 7.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2024-1235",
+        "descriptions": [
+          {
+            "value": "Cross-Site Scripting (XSS) in search functionality"
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "cvssData": {
+                "baseScore": 6.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2024-1236",
+        "descriptions": [
+          {
+            "value": "Broken Access Control in admin panel"
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "cvssData": {
+                "baseScore": 8.0
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "waf_logs": [
+    {
+      "timestamp": "2024-04-28T12:00:00Z",
+      "client_ip": "192.168.1.1",
+      "request_method": "GET",
+      "request_uri": "/admin.php?id=1' OR '1'='1",
+      "rule_id": "941100",
+      "rule_message": "SQL Injection Attack Detected",
+      "severity": "CRITICAL"
+    },
+    {
+      "timestamp": "2024-04-28T12:01:00Z",
+      "client_ip": "192.168.1.2",
+      "request_method": "GET",
+      "request_uri": "/search?q=<script>alert(1)</script>",
+      "rule_id": "941110",
+      "rule_message": "XSS Attack Detected",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2024-04-28T12:02:00Z",
+      "client_ip": "192.168.1.3",
+      "request_method": "POST",
+      "request_uri": "/api/users",
+      "rule_id": "949110",
+      "rule_message": "Broken Access Control Attempt",
+      "severity": "MEDIUM"
+    }
+  ],
+  "pen_test_findings": [
+    {
+      "vulnerability": "SQL Injection",
+      "severity": "Critical",
+      "description": "SQL injection vulnerability found in the login form. Attackers can bypass authentication using SQL injection techniques.",
+      "remediation": "Implement parameterized queries and input validation. Use prepared statements for all database queries.",
+      "payload": "' OR '1'='1",
+      "is_false_positive": false
+    },
+    {
+      "vulnerability": "Cross-Site Scripting (XSS)",
+      "severity": "High",
+      "description": "Reflected XSS vulnerability in the search functionality. User input is not properly sanitized before being displayed.",
+      "remediation": "Implement proper input sanitization and output encoding. Use Content Security Policy headers.",
+      "payload": "<script>alert(1)</script>",
+      "is_false_positive": false
+    },
+    {
+      "vulnerability": "Command Injection",
+      "severity": "Critical",
+      "description": "Command injection vulnerability in the system diagnostics page. User input is directly passed to system commands.",
+      "remediation": "Implement proper input validation and use safe APIs for system commands. Avoid using shell commands directly.",
+      "payload": "; cat /etc/passwd",
+      "is_false_positive": false
+    }
+  ],
+  "owasp_resources": [
+    {
+      "title": "OWASP Top 10 2023",
+      "categories": [
+        {
+          "id": "A01",
+          "name": "Broken Access Control",
+          "description": "Access control vulnerabilities that allow unauthorized access"
+        },
+        {
+          "id": "A02",
+          "name": "Cryptographic Failures",
+          "description": "Vulnerabilities related to cryptography and encryption"
+        },
+        {
+          "id": "A03",
+          "name": "Injection",
+          "description": "SQL, NoSQL, OS, and LDAP injection vulnerabilities"
+        },
+        {
+          "id": "A04",
+          "name": "Insecure Design",
+          "description": "Security flaws in the design of applications"
+        },
+        {
+          "id": "A05",
+          "name": "Security Misconfiguration",
+          "description": "Insecure default configurations and incomplete configurations"
+        }
+      ]
+    }
+  ]
+}

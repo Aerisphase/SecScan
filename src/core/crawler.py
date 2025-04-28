@@ -10,7 +10,7 @@ import asyncio
 from datetime import datetime
 from asyncio import Semaphore
 
-# Настройка системы логирования
+# Set up logging system
 logger = logging.getLogger('Crawler')
 
 class AdvancedCrawler:
@@ -182,7 +182,7 @@ class AdvancedCrawler:
         return list(links)
 
 def scan_website(target_url: str, config: Dict) -> Optional[Dict]:
-    """Сканирование веб-сайта на наличие уязвимостей"""
+    """Scan website for vulnerabilities"""
     validated_config = {
         'max_pages': int(config.get('max_pages', 20)),
         'delay': float(config.get('delay', 1.0)),
