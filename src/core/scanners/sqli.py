@@ -1,12 +1,17 @@
 import logging
-from urllib.parse import urlparse, parse_qs, quote
-from ..http_client import HttpClient
 import re
-from typing import List, Dict, Optional, Union
+from urllib.parse import urlparse, parse_qs, quote
+from typing import List, Dict, Optional, Any
+from ..http_client import HttpClient
+from ..scanner_base import BaseScannerPlugin, ScannerRegistry
 
 logger = logging.getLogger(__name__)
 
-class SQLiScanner:
+class SQLiScanner(BaseScannerPlugin):
+    name = 'sqli_scanner'
+    description = 'Scanner for SQL Injection (SQLi) vulnerabilities'
+    severity_levels = ['low', 'medium', 'high', 'critical']
+
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
         self.payloads = [
@@ -43,122 +48,91 @@ class SQLiScanner:
             r"Npgsql\.",
             r"Microsoft SQL Native Client error",
             r"OLE DB.*SQL Server",
-            r"SQL Server.*Driver",
-            r"Warning.*odbc_.*",
-            r"Warning.*mssql_",
-            r"Microsoft Access Driver",
-            r"JET Database Engine",
-            r"Access Database Engine",
-            r"Syntax error.*in query expression",
-            r"Unclosed quotation mark after the character string",
-            r"Microsoft OLE DB Provider for ODBC Drivers",
-            r"Microsoft OLE DB Provider for SQL Server",
-            r"SQL Server.*Driver.*Error",
-            r"SQL Server.*Driver.*Warning",
-            r"SQL Server.*Driver.*Exception",
-            r"SQL Server.*Driver.*Fatal",
-            r"SQL Server.*Driver.*Critical",
-            r"SQL Server.*Driver.*Severe",
-            r"SQL Server.*Driver.*Error.*[0-9]+",
-            r"SQL Server.*Driver.*Warning.*[0-9]+",
-            r"SQL Server.*Driver.*Exception.*[0-9]+",
-            r"SQL Server.*Driver.*Fatal.*[0-9]+",
-            r"SQL Server.*Driver.*Critical.*[0-9]+",
-            r"SQL Server.*Driver.*Severe.*[0-9]+"
+            r"SQL Server.*Driver"
         ]
-
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+    
+    async def scan(self, page: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Scan a page for potential SQL Injection vulnerabilities.
+        
+        Args:
+            page (Dict[str, Any]): Page information from crawler
+        
+        Returns:
+            List[Dict[str, Any]]: Detected SQL Injection vulnerabilities
+        """
         vulnerabilities = []
+        url = page.get('url', '')
+        forms = page.get('forms', [])
         
         try:
             # Check URL parameters
-            parsed = urlparse(url)
-            params = parse_qs(parsed.query)
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
             
-            if params:
-                for param in params:
+            for param_name, param_values in query_params.items():
+                for payload in self.payloads:
+                    # Inject payload into parameter
+                    modified_params = query_params.copy()
+                    modified_params[param_name] = [payload]
+                    
+                    # Reconstruct URL with injected payload
+                    modified_url = parsed_url._replace(
+                        query='&'.join(
+                            f'{quote(k)}={quote(v[0])}' 
+                            for k, v in modified_params.items()
+                        )
+                    ).geturl()
+                    
+                    # Send request with injected payload
+                    response = await self.client.get(modified_url)
+                    
+                    # Check for SQL error patterns
+                    for pattern in self.error_patterns:
+                        if re.search(pattern, response.text, re.IGNORECASE):
+                            vulnerabilities.append({
+                                'type': 'sql_injection',
+                                'url': modified_url,
+                                'vulnerable_parameter': param_name,
+                                'payload': payload,
+                                'severity': 'high',
+                                'description': f"SQL injection vulnerability found in parameter '{param_name}'",
+                                'location': f"URL parameter: {param_name}"
+                            })
+                            break
+            
+            # Check form inputs
+            for form in forms:
+                for input_field in form.get('inputs', []):
+                    field_name = input_field.get('name', '')
+                    if not field_name:
+                        continue
+                        
                     for payload in self.payloads:
-                        try:
-                            test_url = self._inject_payload(url, param, payload)
-                            response = self.client.get(test_url, timeout=10)
-                            
-                            if response and self._is_vulnerable(response.text):
+                        # Simulate form submission with payload
+                        form_data = form.get('data', {}).copy()
+                        form_data[field_name] = payload
+                        
+                        # Send form submission
+                        response = await self.client.post(url, data=form_data)
+                        
+                        # Check for SQL error patterns
+                        for pattern in self.error_patterns:
+                            if re.search(pattern, response.text, re.IGNORECASE):
                                 vulnerabilities.append({
-                                    'type': 'SQL Injection',
-                                    'url': test_url,
+                                    'type': 'sql_injection',
+                                    'url': url,
+                                    'vulnerable_parameter': field_name,
                                     'payload': payload,
-                                    'evidence': self._extract_error(response.text),
-                                    'severity': 'critical',
-                                    'param': param,
-                                    'method': 'GET'
+                                    'severity': 'high',
+                                    'description': f"SQL injection vulnerability found in form field '{field_name}'",
+                                    'location': f"Form field: {field_name}"
                                 })
-                        except Exception as e:
-                            logger.error(f"SQLi GET scan error for {url}: {str(e)}")
-            
-            # Check forms
-            if forms:
-                for form in forms:
-                    try:
-                        form_fields = form.get('fields', [])
-                        if not isinstance(form_fields, list):
-                            logger.warning(f"Invalid form fields type: {type(form_fields)}")
-                            continue
-                        
-                        method = form.get('method', 'POST').upper()
-                        action = form.get('action', '')
-                        if not action:
-                            logger.warning("Form has no action URL")
-                            continue
-                        
-                        for field in form_fields:
-                            for payload in self.payloads:
-                                try:
-                                    test_data = {}
-                                    for f in form_fields:
-                                        field_name = f.get('name') if isinstance(f, dict) else f
-                                        test_data[field_name] = payload if f == field else 'test'
-                                    
-                                    if method == 'POST':
-                                        response = self.client.post(action, data=test_data, timeout=10)
-                                    elif method == 'GET':
-                                        response = self.client.get(action, params=test_data, timeout=10)
-                                    else:
-                                        logger.warning(f"Unsupported form method: {method}")
-                                        continue
-                                    
-                                    if response and self._is_vulnerable(response.text):
-                                        vulnerabilities.append({
-                                            'type': 'SQL Injection',
-                                            'url': action,
-                                            'payload': payload,
-                                            'evidence': self._extract_error(response.text),
-                                            'severity': 'critical',
-                                            'param': field,
-                                            'method': method
-                                        })
-                                except Exception as e:
-                                    logger.error(f"SQLi form scan error for field {field}: {str(e)}")
-                    except Exception as e:
-                        logger.error(f"SQLi form scan error: {str(e)}")
-        
+                                break
         except Exception as e:
-            logger.error(f"SQLi scan error: {str(e)}")
+            logger.error(f"Error during SQLi scan: {e}")
         
         return vulnerabilities
 
-    def _inject_payload(self, url: str, param: str, payload: str) -> str:
-        parsed = urlparse(url)
-        query = parse_qs(parsed.query)
-        query[param] = [payload]
-        new_query = '&'.join(f"{k}={quote(v[0])}" for k, v in query.items())
-        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
-
-    def _is_vulnerable(self, response_text: str) -> bool:
-        return any(re.search(pattern, response_text, re.IGNORECASE) for pattern in self.error_patterns)
-
-    def _extract_error(self, text: str) -> str:
-        for pattern in self.error_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return f"SQL error detected: {match.group(0)}"
-        return "Unknown SQL error"
+# Manually register the SQLiScanner with the registry
+ScannerRegistry.register_scanner(SQLiScanner)

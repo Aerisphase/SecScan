@@ -26,10 +26,19 @@ from src.core.scanners.xss import XSSScanner
 from src.core.scanners.sqli import SQLiScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
+from src.core.scanner_base import ScannerRegistry
 from src.core.scanner import Scanner
 from src.core.reporter import Reporter
-from src.ai.recommender import VulnerabilityRecommender
-from src.ai.vulnerability_analyzer import VulnerabilityAnalyzer
+# Optional AI components
+try:
+    from src.ai.recommender import VulnerabilityRecommender
+    from src.ai.vulnerability_analyzer import VulnerabilityAnalyzer
+    AI_COMPONENTS_AVAILABLE = True
+except ImportError:
+    VulnerabilityRecommender = None
+    VulnerabilityAnalyzer = None
+    AI_COMPONENTS_AVAILABLE = False
+    logger.warning("AI components not available. Some features will be disabled.")
 
 # Setup logging
 logging.basicConfig(
@@ -38,8 +47,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger('Server')
 
-def find_free_port(start_port: int = 8000, max_attempts: int = 10) -> int:
+def find_free_port(start_port: int = 8000, max_attempts: int = 100) -> int:
     """Find a free port starting from start_port"""
+    logger.info(f"Attempting to find a free port starting from {start_port}")
     for port in range(start_port, start_port + max_attempts):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
             try:
@@ -150,8 +160,12 @@ async def read_root():
     return {"message": "SecScan API is running"}
 
 # Initialize the recommender
-recommender = VulnerabilityRecommender()
-analyzer = VulnerabilityAnalyzer()
+if AI_COMPONENTS_AVAILABLE:
+    recommender = VulnerabilityRecommender()
+    analyzer = VulnerabilityAnalyzer()
+else:
+    recommender = None
+    analyzer = None
 
 # Add new models
 class RecommendationRequest(BaseModel):
@@ -168,8 +182,23 @@ class RecommendationResponse(BaseModel):
 @app.post("/recommendations", response_model=RecommendationResponse)
 async def get_recommendations(request: RecommendationRequest, api_key: str = Depends(get_api_key)):
     """Get recommendations for a vulnerability"""
+    if not AI_COMPONENTS_AVAILABLE:
+        raise HTTPException(
+            status_code=501,
+            detail="AI-powered recommendations are not available"
+        )
+    
     try:
-        recommendations = recommender.get_recommendations(request.vulnerability)
+        # Get available scanner types from registry
+        scanner_registry = ScannerRegistry()
+        available_scanners = [scanner.name for scanner in scanner_registry.get_all_scanners()]
+        
+        # Enhance recommendations with scanner context
+        recommendations = recommender.get_recommendations({
+            **request.vulnerability,
+            'scanner_types': available_scanners
+        })
+        
         return recommendations
     except Exception as e:
         logger.error(f"Error getting recommendations: {str(e)}")
@@ -181,6 +210,12 @@ async def get_recommendations(request: RecommendationRequest, api_key: str = Dep
 @app.post("/preventive-measures")
 async def get_preventive_measures(request: RecommendationRequest, api_key: str = Depends(get_api_key)):
     """Get preventive measures based on code context"""
+    if not AI_COMPONENTS_AVAILABLE:
+        raise HTTPException(
+            status_code=501,
+            detail="AI-powered preventive measures are not available"
+        )
+    
     try:
         if not request.code_context:
             raise HTTPException(
@@ -198,76 +233,145 @@ async def get_preventive_measures(request: RecommendationRequest, api_key: str =
 
 @app.post("/ai-analyze")
 async def ai_analyze(request: Request, api_key: str = Depends(get_api_key)):
-    data = await request.json()
-    vulnerabilities = data.get("vulnerabilities", [])
-    print("[AI ANALYZE] Received vulnerabilities:", vulnerabilities)
-    results = []
-    for vuln in vulnerabilities:
-        result = analyzer.analyze_vulnerability(
-            vuln.get("type", ""),
-            vuln.get("evidence", vuln.get("details", "")),
-            vuln.get("payload", "")
+    """Perform AI-powered vulnerability analysis"""
+    if not AI_COMPONENTS_AVAILABLE:
+        raise HTTPException(
+            status_code=501,
+            detail="AI-powered analysis is not available"
         )
-        results.append(result)
-    print("[AI ANALYZE] AI results:", results)
+    
+    try:
+        data = await request.json()
+        analysis_result = analyzer.analyze(data)
+        return analysis_result
+    except Exception as e:
+        logger.error(f"Error in AI analysis: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
     return {"ai_results": results}
 
 # Modify the scan endpoint to include recommendations
 @app.post("/scan")
 async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
+    # Generate unique scan ID
+    scan_id = secrets.token_urlsafe(16)
+    start_time = time.time()
+    
+    # Log the start of scanning
+    await log_manager.broadcast(f"Starting scan for {config.target_url}")
+    
     try:
-        start_time = time.time()
-        scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Set max_pages based on scan type
-        max_pages = 100 if config.scan_type == "full" else config.max_pages
-        
-        # Initialize components
-        crawler = AdvancedCrawler(
-            base_url=config.target_url,
-            max_pages=max_pages,
+        # Initialize crawler with configuration
+        async with AdvancedCrawler(
+            config.target_url, 
+            max_pages=config.max_pages,
             delay=config.delay,
             user_agent=config.user_agent
-        )
-        
-        scanner = Scanner()
-        reporter = Reporter()
-        
-        # Start crawling
-        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
-        pages = await crawler.crawl()
-        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
-        
-        # Scan each page
-        vulnerabilities = []
-        for i, page in enumerate(pages, 1):
-            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
-            page_vulns = scanner.scan_page(page)
-            if page_vulns:
-                # Add recommendations to each vulnerability
-                for vuln in page_vulns:
-                    recommendations = recommender.get_recommendations(vuln)
-                    vuln['recommendations'] = recommendations['recommendations']
-                    vuln['prevention_score'] = recommendations['prevention_score']
-                    vuln['confidence'] = recommendations['confidence']
-                vulnerabilities.extend(page_vulns)
-                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
-        
-        # Generate report
-        report = reporter.generate_report(
-            target_url=config.target_url,
-            pages_crawled=len(pages),
-            vulnerabilities_found=vulnerabilities,
-            scan_type=config.scan_type,
-            elapsed_time=time.time() - start_time
-        )
-        
-        # Store results
-        scan_results[scan_id] = report
-        await log_manager.broadcast("Scan completed successfully")
-        
-        return report
-        
+        ) as crawler:
+            # Perform crawling
+            pages = await crawler.crawl()
+            
+            # Get registered scanners
+            scanner_registry = ScannerRegistry()
+            scanners = scanner_registry.get_all_scanners()
+            await log_manager.broadcast(f"Available scanners: {', '.join([scanner.name for scanner in scanners])}")
+            
+            # Validate scan configuration
+            crawler = AdvancedCrawler(config.target_url, max_pages=config.max_pages)
+            await crawler.crawl()
+            
+            # Perform scanning
+            # Map scan types to specific scanners
+            scan_type_map = {
+                'full': ['xss_scanner', 'sqli_scanner'],
+                'xss': 'xss_scanner',
+                'sqli': 'sqli_scanner'
+            }
+            
+            # Determine scan type
+            scanner_registry = ScannerRegistry()
+            from importlib import import_module
+            sqli_module = import_module('src.core.scanners.sqli')
+            SQLiScanner = getattr(sqli_module, 'SQLiScanner')
+            print(f"SQLiScanner details:")
+            print(f"  Name: {SQLiScanner.name}")
+            print(f"  Module: {SQLiScanner.__module__}")
+            print(f"  Bases: {SQLiScanner.__bases__}")
+            print(f"  Attributes: {dir(SQLiScanner)}")
+            try:
+                ScannerRegistry.register_scanner(SQLiScanner)
+            except Exception as e:
+                print(f"Failed to register SQLiScanner: {e}")
+            # Direct debug for SQLiScanner
+            from importlib import import_module
+            import inspect
+            try:
+                sqli_module = import_module('src.core.scanners.sqli')
+                print("\nDEBUG: Successfully imported SQLiScanner module")
+                SQLiScanner = getattr(sqli_module, 'SQLiScanner')
+                print(f"DEBUG: Found SQLiScanner class: {SQLiScanner}")
+                print(f"DEBUG: SQLiScanner bases: {SQLiScanner.__bases__}")
+                print(f"DEBUG: Is SQLiScanner a direct subclass of BaseScannerPlugin? {BaseScannerPlugin in SQLiScanner.__bases__}")
+                print(f"DEBUG: SQLiScanner.__module__: {SQLiScanner.__module__}")
+                print(f"DEBUG: Attempting direct registration...")
+                ScannerRegistry.register_scanner(SQLiScanner)
+                print(f"DEBUG: Registered scanners after direct registration: {ScannerRegistry.list_scanners()}")
+            except Exception as e:
+                print(f"\nERROR with SQLiScanner: {e}")
+
+            # Initialize scanner registry
+            ScannerRegistry.discover_scanners()
+
+            # Directly import and register SQLiScanner
+            from src.core.scanners.sqli import SQLiScanner
+            print(f"Direct SQLiScanner import: {SQLiScanner}")
+            print(f"SQLiScanner bases: {SQLiScanner.__bases__}")
+            ScannerRegistry.register_scanner(SQLiScanner)
+            print(f"Registered scanners after manual registration: {ScannerRegistry.list_scanners()}")
+
+            # Default to xss_scanner if no scan type is specified
+            if not config.scan_type or config.scan_type.lower() not in scan_type_map:
+                scan_types = ['xss_scanner']
+            else:
+                # Resolve scan type
+                type_key = config.scan_type.lower()
+                scan_types = scan_type_map[type_key] if isinstance(scan_type_map[type_key], list) else [scan_type_map[type_key]]
+            
+            # Perform scanning
+            scanner = Scanner(crawler.pages)
+            vulnerabilities = []
+            for scan_type in scan_types:
+                type_vulnerabilities = await scanner.scan(scan_type)
+                vulnerabilities.extend(type_vulnerabilities)
+            
+            # Generate scan statistics
+            stats = {
+                'total_pages': len(pages),
+                'total_vulnerabilities': len(vulnerabilities),
+                'scan_duration': time.time() - start_time,
+                'available_scanners': available_scanners
+            }
+            
+            # Store scan results
+            scan_results[scan_id] = {
+                'status': 'completed',
+                'stats': stats,
+                'vulnerabilities': vulnerabilities,
+                'timestamp': datetime.now()
+            }
+            
+            # Broadcast scan completion
+            await log_manager.broadcast(f"Scan completed for {config.target_url}")
+            
+            return {
+                'scan_id': scan_id,
+                'status': 'completed',
+                'vulnerabilities': vulnerabilities,
+                'stats': stats
+            }
+    
     except Exception as e:
         logger.error(f"Scan error: {str(e)}")
         await log_manager.broadcast(f"Scan error: {str(e)}")

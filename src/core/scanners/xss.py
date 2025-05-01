@@ -1,12 +1,17 @@
 import logging
-from urllib.parse import urlparse, parse_qs, quote
-from ..http_client import HttpClient
 import re
-from typing import List, Dict, Optional, Union
+from urllib.parse import urlparse, parse_qs, quote
+from typing import List, Dict, Optional, Any
+from ..http_client import HttpClient
+from ..scanner_base import BaseScannerPlugin
 
 logger = logging.getLogger(__name__)
 
-class XSSScanner:
+class XSSScanner(BaseScannerPlugin):
+    name = 'xss_scanner'
+    description = 'Scanner for Cross-Site Scripting (XSS) vulnerabilities'
+    severity_levels = ['low', 'medium', 'high', 'critical']
+
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
         self.payloads = [
@@ -34,7 +39,12 @@ class XSSScanner:
             r'&amp;lt;body'
         ]
 
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+    async def scan(self, page: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Ensure the method follows the BaseScannerPlugin interface
+        name = self.name
+        description = self.description
+        url = page.get('url', '')
+        forms = page.get('forms', [])
         vulnerabilities = []
         
         try:
