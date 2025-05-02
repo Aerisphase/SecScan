@@ -7,9 +7,21 @@ try:
 except ImportError:
     CSRFScanner = None  # Stub if module is missing
 
+try:
+    from .ssti import SSTIScanner
+except ImportError:
+    SSTIScanner = None  # Stub if module is missing
+
+try:
+    from .command_injection import CommandInjectionScanner
+except ImportError:
+    CommandInjectionScanner = None  # Stub if module is missing
+
 __all__ = [
     'SQLiScanner',
     'XSSScanner',
     'CSRFScanner',
-    'SSRFScanner'
+    'SSRFScanner',
+    'SSTIScanner',
+    'CommandInjectionScanner'
 ]

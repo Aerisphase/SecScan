@@ -4,7 +4,7 @@ import argparse
 import logging
 from typing import Dict, Optional, List
 from .crawler import AdvancedCrawler
-from .scanners import SQLiScanner, XSSScanner, SSRFScanner
+from .scanners import SQLiScanner, XSSScanner, SSRFScanner, CSRFScanner, SSTIScanner, CommandInjectionScanner
 
 # Set up encoding for Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -146,6 +146,16 @@ class Scanner:
                 'sqli': SQLiScanner(None),
                 'ssrf': SSRFScanner(None)
             }
+            
+            # Add new scanners if available
+            if CSRFScanner is not None:
+                scanners['csrf'] = CSRFScanner(None)
+                
+            if SSTIScanner is not None:
+                scanners['ssti'] = SSTIScanner(None)
+                
+            if CommandInjectionScanner is not None:
+                scanners['cmd_injection'] = CommandInjectionScanner(None)
             
             # Run each scanner on the page
             for scanner_name, scanner in scanners.items():

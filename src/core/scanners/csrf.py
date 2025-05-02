@@ -1,42 +1,66 @@
-from typing import Dict, Optional
-from requests import Session
+import logging
+from typing import Dict, Optional, List, Union
+from ..http_client import HttpClient
+import re
+
+logger = logging.getLogger(__name__)
 
 class CSRFScanner:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, client=None):
+        self.client = client if client else HttpClient()
         
-    def scan(self, url: str) -> Dict[str, Optional[bool]]:
+    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
         """
         Checks for CSRF protection
         
         :param url: URL to check
-        :return: Results in format {'csrf_protected': bool, 'token_found': bool}
+        :param forms: List of forms to check
+        :return: List of vulnerabilities found
         """
+        vulnerabilities = []
+        
         try:
-            response = self.session.get(url)
+            # Check the main page
+            response = self.client.get(url)
+            if not response:
+                return vulnerabilities
+                
             html = response.text.lower()
+            headers = response.headers
             
             # Check for CSRF token presence
-            token_found = any(
-                'csrf_token' in html or
-                'csrfmiddlewaretoken' in html or
-                'authenticity_token' in html
-            )
+            token_found = any([
+                'csrf_token' in html,
+                'csrfmiddlewaretoken' in html,
+                'authenticity_token' in html,
+                '_token' in html
+            ])
             
             # Check protection headers
-            protected = (
-                response.headers.get('X-CSRF-Protection') == '1' or
-                'SameSite=Strict' in response.headers.get('Set-Cookie', '')
+            header_protection = (
+                headers.get('X-CSRF-Protection') == '1' or
+                'SameSite=Strict' in headers.get('Set-Cookie', '') or
+                'SameSite=Lax' in headers.get('Set-Cookie', '')
             )
             
-            return {
-                'csrf_protected': protected,
-                'token_found': token_found
-            }
+            # If no CSRF protection found, report vulnerability
+            if not token_found and not header_protection and forms:
+                # Only report CSRF for forms that might change state
+                for form in forms:
+                    method = form.get('method', '').upper()
+                    if method == 'POST':
+                        action = form.get('action', url)
+                        vulnerabilities.append({
+                            'type': 'CSRF',
+                            'url': action,
+                            'payload': None,
+                            'evidence': 'No CSRF token or protection headers found',
+                            'severity': 'medium',
+                            'param': None,
+                            'method': method
+                        })
             
         except Exception as e:
-            return {
-                'csrf_protected': None,
-                'token_found': None,
-                'error': str(e)
-            }
+            logger.error(f"CSRF scan error: {str(e)}")
+            
+        return vulnerabilities

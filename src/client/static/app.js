@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const scanForm = document.getElementById('scanForm');
     const resultsCard = document.getElementById('resultsCard');
@@ -462,6 +462,9 @@
             updateTerminal('Running XSS scanner on https://example.com/search', 'info');
             updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
             updateTerminal('Running SSRF scanner on https://example.com/fetch', 'info');
+            updateTerminal('Running SSTI scanner on https://example.com/template', 'info');
+            updateTerminal('Running Command Injection scanner on https://example.com/exec', 'info');
+            updateTerminal('Running CSRF scanner on https://example.com/profile', 'info');
             
             // Create sample vulnerabilities
             const sampleResult = {
@@ -531,23 +534,57 @@
                         ],
                         prevention_score: 0.85,
                         confidence: 0.92
-                    }
-                    ,                    {
+                    },
+                    {
                         type: 'SSRF',
                         url: 'https://example.com/fetch',
                         payload: 'http://169.254.169.254/latest/meta-data/',
-                        evidence: 'Cloud instance metadata exposed',
+                        evidence: 'Server accessed internal resource',
                         severity: 'high',
                         param: 'url',
                         method: 'GET',
                         recommendations: [
-                            'Implement URL validation and allowlisting',
-                            'Use a URL parser to validate domain and protocol',
-                            'Avoid using user input directly in HTTP requests',
-                            'Implement network-level protections'
+                            'Implement URL allowlisting',
+                            'Use a dedicated service for remote resource access',
+                            'Validate and sanitize URL parameters',
+                            'Restrict access to internal networks'
                         ],
                         prevention_score: 0.88,
                         confidence: 0.94
+                    },
+                    {
+                        type: 'SSTI',
+                        url: 'https://example.com/template',
+                        payload: '{{7*7}}',
+                        evidence: 'Math expression evaluated: 7*7=49',
+                        severity: 'high',
+                        param: 'template',
+                        method: 'POST',
+                        recommendations: [
+                            'Use template engines that sandbox execution',
+                            'Avoid user-controlled template content',
+                            'Implement input validation and sanitization',
+                            'Use a template engine with strict context separation'
+                        ],
+                        prevention_score: 0.87,
+                        confidence: 0.93
+                    },
+                    {
+                        type: 'Command Injection',
+                        url: 'https://example.com/exec',
+                        payload: '& cat /etc/passwd',
+                        evidence: 'Command output leaked: root:x:0:0',
+                        severity: 'critical',
+                        param: 'cmd',
+                        method: 'GET',
+                        recommendations: [
+                            'Avoid using shell commands with user input',
+                            'Use APIs instead of command-line calls',
+                            'Implement strict input validation and allowlisting',
+                            'Run commands with minimal privileges'
+                        ],
+                        prevention_score: 0.92,
+                        confidence: 0.96
                     },
                 ],
                 security_recommendations: [
