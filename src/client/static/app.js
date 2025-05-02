@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const scanForm = document.getElementById('scanForm');
     const resultsCard = document.getElementById('resultsCard');
@@ -461,6 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTerminal('Crawling completed. Found 5 pages in 2.5 seconds', 'info');
             updateTerminal('Running XSS scanner on https://example.com/search', 'info');
             updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
+            updateTerminal('Running SSRF scanner on https://example.com/fetch', 'info');
             
             // Create sample vulnerabilities
             const sampleResult = {
@@ -471,10 +472,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 elapsed_time: 2.5,
                 stats: {
                     pages_crawled: 5,
-                    total_vulnerabilities: 3,
+                    total_vulnerabilities: 4,
                     severity_counts: {
                         critical: 1,
-                        high: 2,
+                        high: 3,
                         medium: 0,
                         low: 0
                     }
@@ -531,6 +532,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         prevention_score: 0.85,
                         confidence: 0.92
                     }
+                    ,                    {
+                        type: 'SSRF',
+                        url: 'https://example.com/fetch',
+                        payload: 'http://169.254.169.254/latest/meta-data/',
+                        evidence: 'Cloud instance metadata exposed',
+                        severity: 'high',
+                        param: 'url',
+                        method: 'GET',
+                        recommendations: [
+                            'Implement URL validation and allowlisting',
+                            'Use a URL parser to validate domain and protocol',
+                            'Avoid using user input directly in HTTP requests',
+                            'Implement network-level protections'
+                        ],
+                        prevention_score: 0.88,
+                        confidence: 0.94
+                    },
                 ],
                 security_recommendations: [
                     'Missing X-Frame-Options header - Consider adding to prevent clickjacking',
@@ -562,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 vulnElements.forEach(el => {
                     // Extract type from header text
                     let headerText = el.querySelector('h6, h3')?.textContent || '';
-                    let typeMatch = headerText.match(/(SQL INJECTION|SQL Injection|XSS|CSRF)/i);
+                    let typeMatch = headerText.match(/(SQL INJECTION|SQL Injection|XSS|CSRF|SSRF)/i);
                     let vulnType = typeMatch ? (typeMatch[1].toUpperCase() === 'SQL INJECTION' ? 'SQL Injection' : typeMatch[1].toUpperCase()) : headerText.trim();
                     // Extract payload from the details section
                     let payload = '';
@@ -652,3 +670,4 @@ document.addEventListener('DOMContentLoaded', () => {
         bsModal.show();
     }
 }); 
+

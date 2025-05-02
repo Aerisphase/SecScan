@@ -1,0 +1,57 @@
+// Changes needed for app.js to support SSRF scanner
+
+// 1. Add SSRF scanner to the test functionality (around line 462)
+// After this line:
+updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
+// Add this new line:
+updateTerminal('Running SSRF scanner on https://example.com/fetch', 'info');
+
+// 2. Update the statistics to include the SSRF vulnerability (around line 471-479)
+// Change:
+stats: {
+    pages_crawled: 5,
+    total_vulnerabilities: 3,
+    severity_counts: {
+        critical: 1,
+        high: 2,
+        medium: 0,
+        low: 0
+    }
+},
+// To:
+stats: {
+    pages_crawled: 5,
+    total_vulnerabilities: 4,
+    severity_counts: {
+        critical: 1,
+        high: 3,
+        medium: 0,
+        low: 0
+    }
+},
+
+// 3. Add the SSRF vulnerability to the sample vulnerabilities (around line 532)
+// After the CSRF vulnerability object and before the closing bracket of the vulnerabilities array, add:
+{
+    type: 'SSRF',
+    url: 'https://example.com/fetch',
+    payload: 'http://169.254.169.254/latest/meta-data/',
+    evidence: 'Cloud instance metadata exposed',
+    severity: 'high',
+    param: 'url',
+    method: 'GET',
+    recommendations: [
+        'Implement URL validation and allowlisting',
+        'Use a URL parser to validate domain and protocol',
+        'Avoid using user input directly in HTTP requests',
+        'Implement network-level protections'
+    ],
+    prevention_score: 0.88,
+    confidence: 0.94
+},
+
+// 4. Update the vulnerability type detection regex (around line 564)
+// Change:
+let typeMatch = headerText.match(/(SQL INJECTION|SQL Injection|XSS|CSRF)/i);
+// To:
+let typeMatch = headerText.match(/(SQL INJECTION|SQL Injection|XSS|CSRF|SSRF)/i);

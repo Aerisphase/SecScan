@@ -4,7 +4,7 @@ import argparse
 import logging
 from typing import Dict, Optional, List
 from .crawler import AdvancedCrawler
-from .scanners import SQLiScanner, XSSScanner
+from .scanners import SQLiScanner, XSSScanner, SSRFScanner
 
 # Set up encoding for Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -103,7 +103,8 @@ class Scanner:
             # Initialize scanners
             scanners = {
                 'xss': XSSScanner(crawler.client),
-                'sqli': SQLiScanner(crawler.client)
+                'sqli': SQLiScanner(crawler.client),
+                'ssrf': SSRFScanner(crawler.client)
             }
 
             # Collect vulnerabilities
@@ -142,7 +143,8 @@ class Scanner:
             # Initialize scanners
             scanners = {
                 'xss': XSSScanner(None),  # We don't need the client for page scanning
-                'sqli': SQLiScanner(None)
+                'sqli': SQLiScanner(None),
+                'ssrf': SSRFScanner(None)
             }
             
             # Run each scanner on the page

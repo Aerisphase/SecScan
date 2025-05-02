@@ -1,5 +1,6 @@
 from .sqli import SQLiScanner
 from .xss import XSSScanner
+from .ssrf import SSRFScanner
 
 try:
     from .csrf import CSRFScanner
@@ -9,5 +10,6 @@ except ImportError:
 __all__ = [
     'SQLiScanner',
     'XSSScanner',
-    'CSRFScanner'  
+    'CSRFScanner',
+    'SSRFScanner'
 ]
