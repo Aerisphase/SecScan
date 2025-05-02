@@ -2,11 +2,9 @@ import sys
 import io
 import argparse
 import logging
-import asyncio
-from typing import List, Dict, Optional, Any, Type
-from .scanner_base import BaseScannerPlugin
-
-from .scanner_base import ScannerRegistry
+from typing import Dict, Optional, List
+from .crawler import AdvancedCrawler
+from .scanners import SQLiScanner, XSSScanner
 
 # Set up encoding for Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -72,11 +70,67 @@ def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
     return recommendations
 
 class Scanner:
-    def __init__(self, pages: List[Dict[str, Any]], scanner_classes: Optional[List[Type[BaseScannerPlugin]]] = None):
-        self.pages = pages
-        self.registry = ScannerRegistry()
+    def __init__(self, config: Optional[Dict] = None):
+        self.config = config or {}
         self.logger = logging.getLogger('Scanner')
-        self.scanners = scanner_classes or self.registry.get_all_scanners()
+        
+    def scan(self, target_url: str) -> Optional[Dict]:
+        """Main scanning function"""
+        try:
+            # Ensure correct types in config
+            validated_config = {
+                'max_pages': int(self.config.get('max_pages', 20)),
+                'delay': float(self.config.get('delay', 1.0)),
+                'user_agent': str(self.config.get('user_agent', '')),
+                'scan_type': str(self.config.get('scan_type', 'fast')),
+                'verify_ssl': bool(self.config.get('verify_ssl', True)),
+                'proxy': self.config.get('proxy'),
+                'auth': self.config.get('auth'),
+                'max_retries': int(self.config.get('max_retries', 3))
+            }
+
+            self.logger.debug(f"Using config: {validated_config}")
+            crawler = AdvancedCrawler(target_url, validated_config)
+            crawl_data = crawler.crawl()
+            
+            if not crawl_data:
+                self.logger.error("No data collected during crawling")
+                return None
+
+            # Analyze security headers
+            security_recommendations = analyze_security_headers(crawl_data.get('security_headers', {}))
+
+            # Initialize scanners
+            scanners = {
+                'xss': XSSScanner(crawler.client),
+                'sqli': SQLiScanner(crawler.client)
+            }
+
+            # Collect vulnerabilities
+            vulnerabilities = []
+            for scanner_name, scanner in scanners.items():
+                try:
+                    self.logger.info(f"Running {scanner_name.upper()} scanner...")
+                    vulns = scanner.scan(target_url, crawl_data.get('forms', []))
+                    if vulns:
+                        vulnerabilities.extend(vulns)
+                except Exception as e:
+                    self.logger.error(f"{scanner_name} scanner failed: {str(e)}")
+
+            return {
+                'stats': {
+                    'pages_crawled': crawl_data.get('pages_crawled', 0),
+                    'links_found': crawl_data.get('links_found', 0),
+                    'forms_found': crawl_data.get('forms_found', 0)
+                },
+                'vulnerabilities': vulnerabilities,
+                'security_recommendations': security_recommendations,
+                'security_headers': crawl_data.get('security_headers', {})
+            }
+
+        except Exception as e:
+            self.logger.error(f"Scanning error: {str(e)}", exc_info=True)
+            return None
 
     def scan_page(self, page_data: Dict) -> List[Dict]:
         """Scan a single page for vulnerabilities"""
@@ -87,15 +141,15 @@ class Scanner:
             
             # Initialize scanners
             scanners = {
-                'xss': XSSScanner(),
-                'sqli': SQLiScanner()
+                'xss': XSSScanner(None),  # We don't need the client for page scanning
+                'sqli': SQLiScanner(None)
             }
             
             # Run each scanner on the page
             for scanner_name, scanner in scanners.items():
                 try:
                     self.logger.info(f"Running {scanner_name.upper()} scanner on {url}")
-                    vulns = scanner.scan(page_data)
+                    vulns = scanner.scan(url, forms)
                     if vulns:
                         vulnerabilities.extend(vulns)
                 except Exception as e:
@@ -106,102 +160,6 @@ class Scanner:
         except Exception as e:
             self.logger.error(f"Error scanning page {url}: {str(e)}")
             return []
-
-    async def scan(self, scan_type: Optional[str] = None) -> List[Dict]:
-        """Perform vulnerability scanning.
-        
-        Args:
-            scan_type (Optional[str]): Type of scan to perform.
-        
-        Returns:
-            List of detected vulnerabilities
-        """
-        # Determine available scanners
-        scanner_registry = ScannerRegistry()
-        available_scanners = scanner_registry.list_scanners()
-        self.logger.info(f"Available scanners: {available_scanners}")
-        
-        # Determine which scanners to use
-        if scan_type:
-            # If a specific scan type is provided, validate it
-            if scan_type not in available_scanners:
-                self.logger.error(f"Invalid scan type: {scan_type}. Available: {available_scanners}")
-                raise ValueError(f"Invalid scan type: {scan_type}. Available: {available_scanners}")
-            
-            # Get the scanner class directly
-            scanner_class = scanner_registry._scanners.get(scan_type)
-            
-            # If no scanner found, log a warning and return empty list
-            if not scanner_class:
-                self.logger.warning(f"No scanner found for type: {scan_type}")
-                return []
-            
-            # Create scanner instance
-            self.logger.info(f"Initializing scanner: {scanner_class.__name__}")
-            scanner = scanner_class()
-        else:
-            # Default to all registered scanners
-            scanner_classes = list(scanner_registry._scanners.values())
-            
-            # If no scanners found, return empty list
-            if not scanner_classes:
-                self.logger.warning("No scanners registered")
-                return []
-            
-            # Create scanner instances
-            scanners = []
-            for scanner_class in scanner_classes:
-                self.logger.info(f"Initializing scanner: {scanner_class.__name__}")
-                scanners.append(scanner_class())
-        
-        # Prepare scanning tasks
-        tasks = []
-        
-        # Use single scanner or multiple scanners based on previous logic
-        target_scanners = [scanner] if scan_type else scanners
-        
-        # Log scanning details
-        self.logger.info(f"Scanning with {len(target_scanners)} scanner(s) on {len(self.pages)} pages")
-        
-        for target_scanner in target_scanners:
-            for page in self.pages:
-                tasks.append(
-                    asyncio.create_task(
-                        target_scanner.scan(page)
-                    )
-                )
-        
-        # Wait for all scanning tasks to complete
-        results = await asyncio.gather(*tasks)
-        
-        # Flatten and filter results
-        vulnerabilities = []
-        for result in results:
-            if result:
-                vulnerabilities.extend(result)
-        
-        self.logger.info(f"Scan completed. Found {len(vulnerabilities)} vulnerabilities")
-        return vulnerabilities
-
-    def _validate_scan_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Validate scan configuration.
-        
-        Args:
-            config (Dict[str, Any]): Scan configuration dictionary.
-        
-        Returns:
-            Dict[str, Any]: Validated configuration.
-        
-        Raises:
-            ValueError: If required configuration keys are missing.
-        """
-        required_keys = ['target_url', 'max_pages']
-        for key in required_keys:
-            if key not in config:
-                raise ValueError(f"Missing required configuration key: {key}")
-        
-        return config
 
 def print_results(results: Dict):
     """Print results to console"""

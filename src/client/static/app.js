@@ -9,12 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearResultsBtn = document.getElementById('clearResults');
     const randomizeUserAgentBtn = document.getElementById('randomizeUserAgent');
 
-    // Event Listeners
-    exportResultsBtn.addEventListener('click', exportResults);
-    clearResultsBtn.addEventListener('click', clearResults);
-    randomizeUserAgentBtn.addEventListener('click', randomizeUserAgent);
-    scanForm.addEventListener('submit', startScan);
-
     // API configuration
     const API_HOST = window.location.hostname;
     const API_PORT = window.location.port || '8001';
@@ -106,95 +100,24 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsCard.style.display = 'none';
     }
 
-    // Scan Functionality
-    async function startScan(event) {
-        event.preventDefault();
-        
-        // Reset UI
-        clearResults();
-        resultsCard.style.display = 'block';
-        scanStats.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
-        vulnerabilities.innerHTML = '';
+    // Event Listeners
+    exportResultsBtn.addEventListener('click', exportResults);
+    clearResultsBtn.addEventListener('click', clearResults);
+    randomizeUserAgentBtn.addEventListener('click', randomizeUserAgent);
 
-        // Collect form data
-        const targetUrl = document.getElementById('targetUrl').value;
-        const scanType = document.getElementById('scanType').value;
-        const maxPages = parseInt(document.getElementById('maxPages').value) || 20;
-        const userAgent = document.getElementById('userAgent').value;
-        const delay = parseFloat(document.getElementById('delay').value) || 1.0;
+    // Advanced options toggle
+    advancedOptions.addEventListener('change', (e) => {
+        const advancedFields = document.querySelectorAll('.advanced-field');
+        advancedFields.forEach(field => {
+            field.style.display = e.target.checked ? 'block' : 'none';
+        });
+    });
 
-        // Validate inputs
-        if (!targetUrl) {
-            alert('Please enter a target URL');
-            return;
-        }
-
-        if (!validateUserAgent(userAgent)) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_URL}/scan`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': API_KEY
-                },
-                body: JSON.stringify({
-                    target_url: targetUrl,
-                    scan_type: scanType,
-                    max_pages: maxPages,
-                    user_agent: userAgent,
-                    delay: delay
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            // Display scan statistics
-            scanStats.innerHTML = `
-                <div class="card-body">
-                    <h5>Scan Statistics</h5>
-                    <p>Total Pages Scanned: ${result.stats.total_pages}</p>
-                    <p>Total Vulnerabilities: ${result.stats.total_vulnerabilities}</p>
-                    <p>Scan Duration: ${result.stats.scan_duration.toFixed(2)} seconds</p>
-                    <p>Available Scanners: ${result.stats.available_scanners.join(', ')}</p>
-                </div>
-            `;
-
-            // Display vulnerabilities
-            if (result.vulnerabilities && result.vulnerabilities.length > 0) {
-                const vulnerabilityList = result.vulnerabilities.map(vuln => `
-                    <div class="alert alert-danger">
-                        <strong>${vuln.type}</strong>
-                        <p>URL: ${vuln.url}</p>
-                        <p>Description: ${vuln.description}</p>
-                        <p>Severity: ${vuln.severity}</p>
-                    </div>
-                `).join('');
-
-                vulnerabilities.innerHTML = `
-                    <div class="card-body">
-                        <h5>Detected Vulnerabilities</h5>
-                        ${vulnerabilityList}
-                    </div>
-                `;
-            } else {
-                vulnerabilities.innerHTML = `
-                    <div class="card-body">
-                        <div class="alert alert-success">No vulnerabilities detected!</div>
-                    </div>
-                `;
-            }
-
-        } catch (error) {
-            handleApiError(error);
-        }
-    }
+    // Terminal Management
+    let isTerminalPaused = false;
+    const terminalContent = document.getElementById('terminalContent');
+    const terminalStatus = document.querySelector('.terminal-status');
+    let ws = null;
 
     function connectWebSocket() {
         if (ws) {
