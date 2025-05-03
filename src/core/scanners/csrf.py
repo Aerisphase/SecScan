@@ -5,7 +5,11 @@ class CSRFScanner:
     def __init__(self, session: Session):
         self.session = session
         
+<<<<<<< Updated upstream
     def scan(self, url: str) -> Dict[str, Optional[bool]]:
+=======
+    def scan(self, url: str, forms: Optional[List[Dict]] = None, waf_bypass: bool = False) -> List[Dict]:
+>>>>>>> Stashed changes
         """
         Checks for CSRF protection
         
@@ -13,7 +17,19 @@ class CSRFScanner:
         :return: Results in format {'csrf_protected': bool, 'token_found': bool}
         """
         try:
+<<<<<<< Updated upstream
             response = self.session.get(url)
+=======
+            # Check the main page
+            # Apply WAF bypass techniques if enabled
+            if waf_bypass:
+                self.client.set_random_user_agent()
+                
+            response = self.client.get(url)
+            if not response:
+                return vulnerabilities
+                
+>>>>>>> Stashed changes
             html = response.text.lower()
             
             # Check for CSRF token presence

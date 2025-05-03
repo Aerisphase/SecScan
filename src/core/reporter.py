@@ -63,20 +63,45 @@ class Reporter:
             
         # Generate type-specific recommendations
         for vuln_type, vulns in vuln_types.items():
-            if vuln_type == 'xss':
+            if vuln_type.lower() == 'xss':
                 recommendations.append(
                     f"Implement Content Security Policy (CSP) headers to prevent XSS attacks. "
                     f"Found {len(vulns)} XSS vulnerabilities."
                 )
-            elif vuln_type == 'sqli':
+            elif vuln_type.lower() == 'sqli':
                 recommendations.append(
                     f"Use parameterized queries or prepared statements for all database operations. "
                     f"Found {len(vulns)} SQL injection vulnerabilities."
                 )
-            elif vuln_type == 'csrf':
+            elif vuln_type.lower() == 'csrf':
                 recommendations.append(
                     f"Implement CSRF tokens for all forms and state-changing requests. "
                     f"Found {len(vulns)} CSRF vulnerabilities."
                 )
+            elif vuln_type.lower() == 'ssti':
+                recommendations.append(
+                    f"Avoid using user input directly in template contexts. Use proper output encoding and template sandboxing. "
+                    f"Found {len(vulns)} Server-Side Template Injection vulnerabilities."
+                )
+            elif vuln_type.lower() == 'ssrf':
+                recommendations.append(
+                    f"Implement strict URL validation, allowlists for external resources, and restrict access to internal networks. "
+                    f"Found {len(vulns)} Server-Side Request Forgery vulnerabilities."
+                )
+            elif vuln_type.lower() == 'command injection':
+                recommendations.append(
+                    f"Never pass user input directly to system commands. Use allowlists, input validation, and safer alternatives to shell commands. "
+                    f"Found {len(vulns)} Command Injection vulnerabilities."
+                )
+            elif vuln_type.lower() == 'xxe':
+                recommendations.append(
+                    f"Disable XML external entity processing in XML parsers and use less complex data formats like JSON when possible. "
+                    f"Found {len(vulns)} XML External Entity vulnerabilities."
+                )
+            elif vuln_type.lower() == 'path traversal':
+                recommendations.append(
+                    f"Validate and sanitize file paths, use path canonicalization, and implement proper access controls. "
+                    f"Found {len(vulns)} Path Traversal vulnerabilities."
+                )
                 
-        return recommendations 
+        return recommendations

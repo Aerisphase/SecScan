@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 from pathlib import Path
 import socket
 from contextlib import closing
@@ -37,6 +37,49 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('Server')
+
+# Define security header analysis function
+def analyze_security_headers(headers):
+    """Analyze security headers and return recommendations"""
+    recommendations = []
+    
+    # Check for important security headers
+    if 'X-XSS-Protection' not in headers:
+        recommendations.append({
+            'header': 'X-XSS-Protection',
+            'value': '1; mode=block',
+            'description': 'Enables XSS filtering in browsers to block XSS attacks'
+        })
+    
+    if 'X-Content-Type-Options' not in headers:
+        recommendations.append({
+            'header': 'X-Content-Type-Options',
+            'value': 'nosniff',
+            'description': 'Prevents browsers from MIME-sniffing a response from declared content-type'
+        })
+    
+    if 'X-Frame-Options' not in headers:
+        recommendations.append({
+            'header': 'X-Frame-Options',
+            'value': 'DENY',
+            'description': 'Prevents clickjacking attacks by disallowing framing of your site'
+        })
+    
+    if 'Content-Security-Policy' not in headers:
+        recommendations.append({
+            'header': 'Content-Security-Policy',
+            'value': "default-src 'self'",
+            'description': 'Helps prevent XSS and data injection attacks by specifying valid content sources'
+        })
+    
+    if 'Strict-Transport-Security' not in headers:
+        recommendations.append({
+            'header': 'Strict-Transport-Security',
+            'value': 'max-age=31536000; includeSubDomains',
+            'description': 'Enforces HTTPS connections for enhanced security'
+        })
+    
+    return recommendations
 
 def find_free_port(start_port: int = 8000, max_attempts: int = 10) -> int:
     """Find a free port starting from start_port"""
@@ -79,6 +122,7 @@ class ScanRequest(BaseModel):
     delay: float = 1.0
     max_pages: int = 20
     user_agent: Optional[str] = None
+    waf_bypass: bool = False
 
 class ScanResult(BaseModel):
     scan_id: str
@@ -97,10 +141,16 @@ class LogManager:
         self.logger = logging.getLogger('WebSocket')
         self.connection_lock = asyncio.Lock()
         self.broadcast_lock = asyncio.Lock()
+        self.heartbeat_task = None
 
     async def connect(self, websocket: WebSocket):
         try:
             async with self.connection_lock:
+                # Check if connection already exists
+                if websocket in self.active_connections:
+                    self.logger.warning("WebSocket connection already exists")
+                    return
+                    
                 self.active_connections.append(websocket)
                 self.logger.info(f"New WebSocket connection established. Total connections: {len(self.active_connections)}")
         except Exception as e:
@@ -127,13 +177,19 @@ class LogManager:
                         message_json = json.dumps({"message": message})
                         await connection.send_text(message_json)
                         self.logger.debug(f"Broadcasted message: {message}")
+                    except WebSocketDisconnect:
+                        self.logger.info(f"WebSocket disconnected during broadcast")
+                        disconnected.append(connection)
                     except Exception as e:
                         self.logger.error(f"Error broadcasting message: {str(e)}")
                         disconnected.append(connection)
             
             # Remove disconnected connections
             for connection in disconnected:
-                await self.disconnect(connection)
+                try:
+                    await self.disconnect(connection)
+                except Exception as e:
+                    self.logger.error(f"Error disconnecting connection: {str(e)}")
 
 log_manager = LogManager()
 
@@ -215,9 +271,14 @@ async def ai_analyze(request: Request, api_key: str = Depends(get_api_key)):
 # Modify the scan endpoint to include recommendations
 @app.post("/scan")
 async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
+    # Create a heartbeat task to keep the WebSocket connection alive
+    heartbeat_task = None
+    scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    scan_results = {}
+    
     try:
-        start_time = time.time()
-        scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        # Send initial scan message to all clients
+        await log_manager.broadcast(f"Starting scan of {config.target_url}")
         
         # Set max_pages based on scan type
         max_pages = 100 if config.scan_type == "full" else config.max_pages
@@ -230,51 +291,124 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
             user_agent=config.user_agent
         )
         
-        scanner = Scanner()
+        # Initialize scanner with WAF bypass if enabled
+        scanner_config = {
+            'scan_type': config.scan_type,
+            'waf_bypass': config.waf_bypass
+        }
+        scanner = Scanner(scanner_config)
         reporter = Reporter()
         
-        # Start crawling
-        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
-        pages = await crawler.crawl()
-        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
+        # Create a background task for sending heartbeats during scanning
+        async def send_heartbeats():
+            try:
+                heartbeat_count = 0
+                while True:
+                    heartbeat_count += 1
+                    # Vary the message to avoid WebSocket optimization dropping "duplicate" messages
+                    if heartbeat_count % 5 == 0:
+                        await log_manager.broadcast(f"Scan in progress... (heartbeat {heartbeat_count})")
+                    else:
+                        await log_manager.broadcast("Scan in progress...")
+                    await asyncio.sleep(2)  # More frequent heartbeats (2 seconds)
+            except asyncio.CancelledError:
+                # Task was cancelled, clean exit
+                logger.info("Heartbeat task cancelled")
+            except Exception as e:
+                logger.error(f"Heartbeat error: {str(e)}")
         
-        # Scan each page
-        vulnerabilities = []
-        for i, page in enumerate(pages, 1):
-            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
-            page_vulns = scanner.scan_page(page)
-            if page_vulns:
-                # Add recommendations to each vulnerability
-                for vuln in page_vulns:
-                    recommendations = recommender.get_recommendations(vuln)
-                    vuln['recommendations'] = recommendations['recommendations']
-                    vuln['prevention_score'] = recommendations['prevention_score']
-                    vuln['confidence'] = recommendations['confidence']
-                vulnerabilities.extend(page_vulns)
-                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
+        # Start the heartbeat task
+        heartbeat_task = asyncio.create_task(send_heartbeats())
         
-        # Generate report
-        report = reporter.generate_report(
+        # Initialize scanner with config
+        scanner = Scanner(
             target_url=config.target_url,
-            pages_crawled=len(pages),
-            vulnerabilities_found=vulnerabilities,
             scan_type=config.scan_type,
-            elapsed_time=time.time() - start_time
+            max_pages=config.max_pages,
+            delay=config.delay,
+            user_agent=config.user_agent,
+            cookies=config.cookies,
+            headers=config.headers,
+            waf_bypass=config.waf_bypass,
+            custom_payloads=config.custom_payloads,
+            exclude_patterns=config.exclude_patterns,
+            include_patterns=config.include_patterns,
+            timeout=config.timeout,
+            log_manager=log_manager
         )
         
-        # Store results
-        scan_results[scan_id] = report
-        await log_manager.broadcast("Scan completed successfully")
-        
-        return report
-        
+        # Run the scan with periodic status updates
+        try:
+            # Send a message before starting the scan
+            await log_manager.broadcast("Initializing scanner...")
+            
+            # Run the scan in a separate thread to avoid blocking the event loop
+            scan_results = await asyncio.to_thread(scanner.scan, config.target_url)
+            
+            # Send a message after scan completes
+            await log_manager.broadcast("Scan execution completed, generating report...")
+            
+            if scan_results:
+                # Generate report
+                reporter = Reporter(scan_results)
+                final_report = reporter.generate_report()
+                
+                # Store results
+                scan_results[scan_id] = final_report
+                
+                # Calculate scan time
+                end_time = time.time()
+                scan_duration = end_time - start_time
+                
+                # Log completion
+                logger.info(f"Scan completed: {scan_id} in {scan_duration:.2f} seconds")
+                await log_manager.broadcast(f"Scan completed in {scan_duration:.2f}s")
+                
+                # Keep the connection alive for a moment after scan completion
+                await asyncio.sleep(1)
+                
+                return {
+                    "scan_id": scan_id,
+                    "status": "completed",
+                    "duration": scan_duration,
+                    "result_url": f"/scan/{scan_id}"
+                }
+            else:
+                logger.error(f"Scan failed: {scan_id}")
+                await log_manager.broadcast("Scan failed - no results returned")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Scan failed to complete"
+                )
+        except Exception as e:
+            logger.error(f"Error during scan execution: {str(e)}")
+            await log_manager.broadcast(f"Scan error: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=str(e)
+            )
     except Exception as e:
-        logger.error(f"Scan error: {str(e)}")
-        await log_manager.broadcast(f"Scan error: {str(e)}")
+        logger.error(f"Scan setup error: {str(e)}")
+        await log_manager.broadcast(f"Scan setup error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=str(e)
         )
+    finally:
+        # Always cancel the heartbeat task if it exists
+        if heartbeat_task:
+            try:
+                logger.info("Cleaning up heartbeat task")
+                heartbeat_task.cancel()
+                await asyncio.sleep(0.5)  # Give it more time to clean up
+            except Exception as e:
+                logger.error(f"Error cancelling heartbeat task: {str(e)}")
+        
+        # Send a final message to confirm everything is done
+        try:
+            await log_manager.broadcast(f"Scan process for {scan_id} completed")
+        except Exception as e:
+            logger.error(f"Error sending final message: {str(e)}")
 
 @app.get("/scan/{scan_id}", response_model=ScanResult)
 async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
@@ -287,41 +421,74 @@ async def get_scan_results(scan_id: str, api_key: str = Depends(get_api_key)):
 async def websocket_endpoint(websocket: WebSocket):
     logger.info("New WebSocket connection attempt")
     try:
-        # Accept connection with protocol validation
-        await websocket.accept(subprotocol='v1.secscan')
-        
-        # Get the selected protocol from the client
-        selected_protocol = websocket.headers.get('sec-websocket-protocol')
-        if selected_protocol != 'v1.secscan':
-            logger.warning(f"Invalid protocol: {selected_protocol}")
-            await websocket.close(code=1002, reason="Invalid protocol")
-            return
+        # Accept connection without protocol requirements
+        await websocket.accept()
+        logger.info("WebSocket connection accepted")
             
         await log_manager.connect(websocket)
         logger.info("WebSocket connection established successfully")
         
+        # Send initial message to confirm connection
         try:
+            await websocket.send_text(json.dumps({'type': 'connected', 'message': 'Connection established'}))
+        except Exception as e:
+            logger.error(f"Error sending initial message: {str(e)}")
+        
+        # Set up ping/pong for connection keepalive
+        ping_interval = 5  # seconds - more frequent pings
+        last_ping_time = time.time()
+        last_activity_time = time.time()
+        
+        # Create a background task for sending pings
+        async def send_pings():
+            nonlocal last_ping_time
+            try:
+                while True:
+                    await asyncio.sleep(ping_interval)
+                    try:
+                        # Only send ping if we haven't sent one recently
+                        current_time = time.time()
+                        if current_time - last_ping_time >= ping_interval:
+                            await websocket.send_text(json.dumps({'type': 'ping'}))
+                            last_ping_time = current_time
+                            logger.debug("Sent ping to client")
+                    except Exception as e:
+                        logger.error(f"Error in ping task: {str(e)}")
+                        break
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.error(f"Ping task error: {str(e)}")
+        
+        # Start the ping task
+        ping_task = asyncio.create_task(send_pings())
+        
+        try:
+            # Main message handling loop
             while True:
                 try:
-                    # Wait for message or timeout
+                    # Wait for message with a reasonable timeout
                     data = await asyncio.wait_for(websocket.receive_text(), timeout=30)
+                    last_activity_time = time.time()
                     
-                    # Handle ping messages
+                    # Handle messages
                     try:
                         message = json.loads(data)
                         if message.get('type') == 'ping':
+                            # Respond to ping immediately
                             await websocket.send_text(json.dumps({'type': 'pong'}))
-                            continue
+                            logger.debug("Received ping, sent pong")
                         elif message.get('type') == 'pong':
-                            continue
+                            # Pong received, connection is good
+                            logger.debug("Received pong from client")
                         else:
+                            # Process other messages
                             await log_manager.broadcast(json.dumps(message))
                     except json.JSONDecodeError:
                         logger.warning(f"Received invalid JSON message: {data}")
                         
                 except asyncio.TimeoutError:
-                    # Send ping to keep connection alive
-                    await websocket.send_text(json.dumps({'type': 'ping'}))
+                    # Just continue the loop - the ping task will handle keepalive
                     continue
                     
         except WebSocketDisconnect:
@@ -329,6 +496,13 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
             await websocket.close(code=1011, reason="Internal server error")
+        finally:
+            # Always cancel the ping task
+            ping_task.cancel()
+            try:
+                await ping_task
+            except asyncio.CancelledError:
+                pass
     except Exception as e:
         logger.error(f"WebSocket connection error: {str(e)}")
         try:

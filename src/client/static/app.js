@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportResultsBtn = document.getElementById('exportResults');
     const clearResultsBtn = document.getElementById('clearResults');
     const randomizeUserAgentBtn = document.getElementById('randomizeUserAgent');
+    const wafBypassCheckbox = document.getElementById('wafBypass');
 
     // API configuration
     const API_HOST = window.location.hostname;
@@ -104,6 +105,74 @@ document.addEventListener('DOMContentLoaded', () => {
     exportResultsBtn.addEventListener('click', exportResults);
     clearResultsBtn.addEventListener('click', clearResults);
     randomizeUserAgentBtn.addEventListener('click', randomizeUserAgent);
+    
+    // Handle form submission
+    scanForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Show terminal and clear previous results
+        clearResults();
+        terminalContent.innerHTML = '';
+        
+        // Get form values
+        const targetUrl = document.getElementById('targetUrl').value;
+        const scanType = document.getElementById('scanType').value;
+        const maxPages = document.getElementById('maxPages').value;
+        const delay = document.getElementById('delay').value;
+        const userAgent = document.getElementById('userAgent').value;
+        const wafBypass = document.getElementById('wafBypass').checked;
+        
+        // Validate user agent if provided
+        if (userAgent && !validateUserAgent(userAgent)) {
+            return;
+        }
+        
+        // Prepare request data
+        const requestData = {
+            target_url: targetUrl,
+            scan_type: scanType,
+            max_pages: parseInt(maxPages),
+            delay: parseFloat(delay),
+            waf_bypass: wafBypass
+        };
+        
+        if (userAgent) {
+            requestData.user_agent = userAgent;
+        }
+        
+        // Update terminal with scan info
+        updateTerminal(`Starting scan of ${targetUrl}`, 'info');
+        if (wafBypass) {
+            updateTerminal('WAF bypass mode enabled - Using evasion techniques', 'warning');
+        }
+        
+        try {
+            // Connect to WebSocket for real-time logs
+            connectWebSocket();
+            
+            // Send scan request
+            const response = await fetch(`${API_URL}/scan`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [API_KEY_NAME]: API_KEY
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            // Display results
+            displayResults(result);
+            
+        } catch (error) {
+            handleApiError(error);
+        }
+    });
 
     // Advanced options toggle
     advancedOptions.addEventListener('change', (e) => {
@@ -119,62 +188,215 @@ document.addEventListener('DOMContentLoaded', () => {
     const terminalStatus = document.querySelector('.terminal-status');
     let ws = null;
 
-    function connectWebSocket() {
+    // Track connection attempts to prevent rapid reconnection cycles
+let connectionAttempts = 0;
+let lastConnectionTime = 0;
+let reconnectTimer = null;
+let pingTimer = null;
+let scanInProgress = false;
+
+function connectWebSocket() {
+        // Clear any existing timers
+        if (pingTimer) {
+            clearInterval(pingTimer);
+            pingTimer = null;
+        }
+        
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+        
+        // Prevent rapid reconnection attempts
+        const now = Date.now();
+        if (now - lastConnectionTime < 2000 && connectionAttempts > 2) {
+            console.log(`Delaying reconnection attempt (${connectionAttempts} attempts in quick succession)`); 
+            reconnectTimer = setTimeout(() => {
+                connectionAttempts = 0;
+                connectWebSocket();
+            }, 5000);
+            return;
+        }
+        
+        lastConnectionTime = now;
+        connectionAttempts++;
+        
+        // Clean up existing connection if any
         if (ws) {
-            ws.close();
+            try {
+                // Only close if not already closing or closed
+                if (ws.readyState !== WebSocket.CLOSING && ws.readyState !== WebSocket.CLOSED) {
+                    ws.close();
+                }
+            } catch (e) {
+                console.error('Error closing existing WebSocket:', e);
+            }
+            ws = null;
         }
 
         try {
-            ws = new WebSocket(WS_URL, ['v1.secscan']);
+            // Update UI to show connecting state
+            terminalStatus.textContent = 'Connecting...';
+            terminalStatus.style.backgroundColor = '#ff9800';
+            
+            // Create new WebSocket connection with no protocol specified
+            ws = new WebSocket(WS_URL);
+            
+            let connectionTimeout = setTimeout(() => {
+                if (ws && ws.readyState !== WebSocket.OPEN) {
+                    updateTerminal('Connection timeout, retrying...', 'warning');
+                    try {
+                        ws.close();
+                    } catch (e) {
+                        console.error('Error closing timed out connection:', e);
+                    }
+                    // Reset connection attempts after timeout
+                    connectionAttempts = 0;
+                    setTimeout(() => connectWebSocket(), 3000);
+                }
+            }, 5000);
             
             ws.onopen = () => {
+                clearTimeout(connectionTimeout);
                 updateTerminal('Connected to server', 'info');
                 terminalStatus.textContent = 'Connected';
                 terminalStatus.style.backgroundColor = '#4CAF50';
+                
+                // Send initial ping to verify connection
+                try {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                } catch (e) {
+                    console.error('Error sending initial ping:', e);
+                }
+                
+                // Set up a more aggressive ping interval during scanning
+                if (scanInProgress) {
+                    console.log('Setting up aggressive ping interval for scan');
+                    if (pingTimer) clearInterval(pingTimer);
+                    pingTimer = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            try {
+                                ws.send(JSON.stringify({ type: 'ping' }));
+                                console.log('Sent aggressive ping during scan');
+                            } catch (e) {
+                                console.error('Error sending aggressive ping:', e);
+                            }
+                        }
+                    }, 2000); // Send ping every 2 seconds during scanning
+                }
             };
             
             ws.onclose = (event) => {
-                updateTerminal(`Disconnected from server (${event.code})`, 'warning');
+                clearTimeout(connectionTimeout);
+                
+                // Don't show warning for normal closure
+                if (event.code !== 1000) {
+                    updateTerminal(`Disconnected from server (${event.code})`, 'warning');
+                }
+                
                 terminalStatus.textContent = 'Disconnected';
                 terminalStatus.style.backgroundColor = '#f44336';
                 
-                // Try to reconnect after 5 seconds
-                setTimeout(connectWebSocket, 5000);
+                // Clear any existing reconnect timer
+                clearTimeout(reconnectTimer);
+                
+                // If we've had too many rapid reconnection attempts, delay longer
+                if (connectionAttempts > 5) {
+                    const backoffDelay = Math.min(5000 * Math.pow(1.5, Math.min(connectionAttempts - 5, 5)), 30000);
+                    updateTerminal(`Too many connection attempts, backing off for ${Math.round(backoffDelay/1000)} seconds...`, 'warning');
+                    reconnectTimer = setTimeout(() => {
+                        connectionAttempts = 0;
+                        connectWebSocket();
+                    }, backoffDelay);
+                } else {
+                    // Normal reconnection with shorter delay
+                    const reconnectDelay = 3000;
+                    updateTerminal(`Reconnecting in ${Math.round(reconnectDelay/1000)} seconds...`, 'info');
+                    reconnectTimer = setTimeout(connectWebSocket, reconnectDelay);
+                }
             };
             
             ws.onerror = (error) => {
-                updateTerminal(`WebSocket error: ${error.message}`, 'error');
+                // Just log the error, onclose will handle reconnection
+                console.error('WebSocket error:', error);
+                updateTerminal(`WebSocket error: ${error.message || 'undefined'}`, 'error');
             };
             
             ws.onmessage = (event) => {
+                // Reset reconnect delay on successful message
+                window.lastReconnectDelay = 1000;
+                
                 try {
                     const data = JSON.parse(event.data);
                     
-                    // Handle ping/pong messages
+                    if (data.type === 'pong') {
+                        // Pong received, connection is good
+                        return;
+                    }
+                    
                     if (data.type === 'ping') {
+                        // Respond to ping immediately
                         ws.send(JSON.stringify({ type: 'pong' }));
                         return;
                     }
-                    if (data.type === 'pong') {
+                    
+                    if (data.type === 'connected') {
+                        updateTerminal(data.message, 'info');
                         return;
                     }
-
-                    // Handle regular messages
+                    
+                    // Track scan status based on message content
                     if (data.message) {
-                        // Handle advanced options messages
-                        if (data.message.includes('Advanced options')) {
-                            const isEnabled = data.message.includes('enabled');
-                            updateTerminal(data.message, isEnabled ? 'success' : 'info');
-                        } else {
-                            updateTerminal(data.message, 'info');
+                        // Check for scan start/end messages
+                        if (data.message.includes('Starting scan') || 
+                            data.message.includes('Scan initiated')) {
+                            console.log('Scan started - enabling aggressive ping');
+                            scanInProgress = true;
+                            
+                            // Set up aggressive ping for scan
+                            if (pingTimer) clearInterval(pingTimer);
+                            pingTimer = setInterval(() => {
+                                if (ws && ws.readyState === WebSocket.OPEN) {
+                                    try {
+                                        ws.send(JSON.stringify({ type: 'ping' }));
+                                    } catch (e) {
+                                        console.error('Error sending scan ping:', e);
+                                    }
+                                }
+                            }, 2000);
+                        } 
+                        else if (data.message.includes('Scan completed') || 
+                                 data.message.includes('Scan failed') || 
+                                 data.message.includes('Scan error')) {
+                            console.log('Scan ended - disabling aggressive ping');
+                            scanInProgress = false;
+                            
+                            // Return to normal ping interval
+                            if (pingTimer) {
+                                clearInterval(pingTimer);
+                                pingTimer = setInterval(() => {
+                                    if (ws && ws.readyState === WebSocket.OPEN) {
+                                        try {
+                                            ws.send(JSON.stringify({ type: 'ping' }));
+                                        } catch (e) {
+                                            console.error('Error sending normal ping:', e);
+                                        }
+                                    }
+                                }, 5000);
+                            }
                         }
+                        
+                        // Display the message
+                        updateTerminal(data.message, data.level || 'info');
                     }
                 } catch (e) {
-                    updateTerminal(`Invalid message format: ${event.data}`, 'error');
+                    console.error('Error parsing message:', e, event.data);
+                    updateTerminal('Error parsing message from server', 'error');
                 }
             };
         } catch (error) {
-            updateTerminal(`Failed to create WebSocket connection: ${error.message}`, 'error');
+            console.error('Failed to create WebSocket:', error);
+            updateTerminal(`Failed to create WebSocket connection: ${error.message || 'undefined'}`, 'error');
             setTimeout(connectWebSocket, 5000);
         }
     }
@@ -267,17 +489,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clearTerminal').addEventListener('click', clearTerminal);
     document.getElementById('pauseTerminal').addEventListener('click', toggleTerminalPause);
     
-    // Keep WebSocket connection alive
+    // Keep WebSocket connection alive with more frequent pings
+    // Use a shorter interval for checking connection status
     setInterval(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            try {
-                ws.send(JSON.stringify({ type: 'ping' }));
-            } catch (error) {
-                updateTerminal(`Failed to send ping: ${error.message}`, 'error');
-                connectWebSocket();
-            }
+        if (!ws) {
+            console.log('No WebSocket connection, attempting to connect...');
+            connectWebSocket();
+            return;
         }
-    }, 30000);
+        
+        if (ws.readyState === WebSocket.OPEN) {
+            // Only send ping if we haven't sent one recently
+            const now = Date.now();
+            if (!window.lastPingSent || now - window.lastPingSent > 8000) {
+                try {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                    window.lastPingSent = now;
+                } catch (error) {
+                    console.error('Ping error:', error);
+                    updateTerminal(`Failed to send ping: ${error.message || 'Connection lost'}`, 'error');
+                    ws.close();
+                    connectWebSocket();
+                }
+            }
+        } else if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+            // Try to reconnect if closed or closing
+            updateTerminal('Connection closed, attempting to reconnect...', 'warning');
+            connectWebSocket();
+        }
+    }, 5000); // Check every 5 seconds
 
     // Update scan form submission
     document.getElementById('scanForm').addEventListener('submit', async (e) => {

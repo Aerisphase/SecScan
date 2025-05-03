@@ -1,9 +1,11 @@
 import time
 import logging
 import requests
+import random
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from .waf_bypass import WAFBypass
 
 class HttpClient:
     def __init__(self, 
@@ -12,7 +14,8 @@ class HttpClient:
                  max_retries: int = 2,
                  rate_limit: float = 0.5,
                  proxy: Optional[str] = None,
-                 auth: Optional[Dict[str, str]] = None):
+                 auth: Optional[Dict[str, str]] = None,
+                 waf_bypass_mode: bool = False):
         self.verify_ssl = verify_ssl
         self.timeout = timeout
         self.max_retries = max_retries
@@ -21,6 +24,8 @@ class HttpClient:
         self.auth = auth
         self.last_request_time = 0
         self.logger = logging.getLogger('HttpClient')
+        self.waf_bypass = WAFBypass()
+        self.waf_bypass_mode = waf_bypass_mode
         
         # Configure session with retry strategy
         self.session = requests.Session()
@@ -63,6 +68,20 @@ class HttpClient:
             if self.auth:
                 kwargs.setdefault('auth', (self.auth.get('username'), self.auth.get('password')))
             
+            # Apply WAF bypass techniques if enabled
+            if self.waf_bypass_mode:
+                # Add random WAF bypass headers
+                headers = kwargs.get('headers', {})
+                waf_headers = self.waf_bypass.get_bypass_headers(num_headers=random.randint(1, 5))
+                headers.update(waf_headers)
+                kwargs['headers'] = headers
+                
+                # Add random delay parameter to URL to avoid caching/rate limiting
+                if '?' in url:
+                    url = f"{url}&_={int(time.time() * 1000)}"
+                else:
+                    url = f"{url}?_={int(time.time() * 1000)}"
+            
             response = self.session.request(method, url, **kwargs)
             response.raise_for_status()
             return response
@@ -78,3 +97,34 @@ class HttpClient:
     def post(self, url: str, data: Optional[Dict[str, Any]] = None, **kwargs) -> Optional[requests.Response]:
         """Make a POST request"""
         return self._make_request('POST', url, data=data, **kwargs)
+        
+    def enable_waf_bypass(self, enable: bool = True) -> None:
+        """Enable or disable WAF bypass mode"""
+        self.waf_bypass_mode = enable
+        self.logger.info(f"WAF bypass mode {'enabled' if enable else 'disabled'}")
+        
+        if enable:
+            # Randomize user agent when enabling WAF bypass
+            self.session.headers.update({
+                'User-Agent': self.waf_bypass._generate_random_user_agent()
+            })
+            
+    def set_random_user_agent(self) -> None:
+        """Set a random user agent to avoid fingerprinting"""
+        self.session.headers.update({
+            'User-Agent': self.waf_bypass._generate_random_user_agent()
+        })
+        
+    def apply_payload_bypass(self, payload: str, vulnerability_type: str) -> str:
+        """Apply WAF bypass techniques to a payload"""
+        if not self.waf_bypass_mode:
+            return payload
+            
+        techniques = random.sample([
+            "encoding", "obfuscation", "case_switching", 
+            "whitespace", "comment_injection"
+        ], k=random.randint(1, 3))
+        
+        return self.waf_bypass.apply_bypass_techniques(
+            payload, techniques, vulnerability_type
+        )

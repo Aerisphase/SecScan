@@ -41,6 +41,8 @@ def parse_args():
     parser.add_argument('--auth', help='Basic auth credentials (user:pass)')
     parser.add_argument('--max-retries', type=int, default=3,
                       help='Maximum number of retries for failed requests')
+    parser.add_argument('--waf-bypass', action='store_true',
+                      help='Enable WAF bypass techniques')
     return parser.parse_args()
 
 def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
@@ -73,6 +75,10 @@ class Scanner:
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.logger = logging.getLogger('Scanner')
+        self.waf_bypass_enabled = config.get('waf_bypass', False) if config else False
+        
+        if self.waf_bypass_enabled:
+            self.logger.info("WAF bypass mode enabled - Using evasion techniques")
         
     def scan(self, target_url: str) -> Optional[Dict]:
         """Main scanning function"""
@@ -86,8 +92,13 @@ class Scanner:
                 'verify_ssl': bool(self.config.get('verify_ssl', True)),
                 'proxy': self.config.get('proxy'),
                 'auth': self.config.get('auth'),
-                'max_retries': int(self.config.get('max_retries', 3))
+                'max_retries': int(self.config.get('max_retries', 3)),
+                'waf_bypass': bool(self.config.get('waf_bypass', False))
             }
+            
+            # Log if WAF bypass mode is enabled
+            if validated_config['waf_bypass']:
+                self.logger.info("WAF bypass mode enabled - Using evasion techniques")
 
             self.logger.debug(f"Using config: {validated_config}")
             crawler = AdvancedCrawler(target_url, validated_config)
@@ -111,7 +122,9 @@ class Scanner:
             for scanner_name, scanner in scanners.items():
                 try:
                     self.logger.info(f"Running {scanner_name.upper()} scanner...")
-                    vulns = scanner.scan(target_url, crawl_data.get('forms', []))
+                    # Pass WAF bypass flag to scanners
+                    vulns = scanner.scan(target_url, crawl_data.get('forms', []), 
+                                        waf_bypass=validated_config.get('waf_bypass', False))
                     if vulns:
                         vulnerabilities.extend(vulns)
                 except Exception as e:
@@ -149,7 +162,8 @@ class Scanner:
             for scanner_name, scanner in scanners.items():
                 try:
                     self.logger.info(f"Running {scanner_name.upper()} scanner on {url}")
-                    vulns = scanner.scan(url, forms)
+                    # Pass WAF bypass flag to scanners
+                    vulns = scanner.scan(url, forms, waf_bypass=self.waf_bypass_enabled)
                     if vulns:
                         vulnerabilities.extend(vulns)
                 except Exception as e:
