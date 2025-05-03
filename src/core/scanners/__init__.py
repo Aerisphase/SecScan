@@ -16,6 +16,16 @@ try:
     from .command_injection import CommandInjectionScanner
 except ImportError:
     CommandInjectionScanner = None  # Stub if module is missing
+    
+try:
+    from .path_traversal import PathTraversalScanner
+except ImportError:
+    PathTraversalScanner = None  # Stub if module is missing
+    
+try:
+    from .xxe import XXEScanner
+except ImportError:
+    XXEScanner = None  # Stub if module is missing
 
 __all__ = [
     'SQLiScanner',
@@ -23,5 +33,7 @@ __all__ = [
     'CSRFScanner',
     'SSRFScanner',
     'SSTIScanner',
-    'CommandInjectionScanner'
+    'CommandInjectionScanner',
+    'PathTraversalScanner',
+    'XXEScanner'
 ]

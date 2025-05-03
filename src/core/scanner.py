@@ -4,7 +4,7 @@ import argparse
 import logging
 from typing import Dict, Optional, List
 from .crawler import AdvancedCrawler
-from .scanners import SQLiScanner, XSSScanner, SSRFScanner, CSRFScanner, SSTIScanner, CommandInjectionScanner
+from .scanners import SQLiScanner, XSSScanner, SSRFScanner, CSRFScanner, SSTIScanner, CommandInjectionScanner, XXEScanner, PathTraversalScanner
 
 # Set up encoding for Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -133,32 +133,44 @@ class Scanner:
             self.logger.error(f"Scanning error: {str(e)}", exc_info=True)
             return None
 
-    def scan_page(self, page_data: Dict) -> List[Dict]:
+    def scan_page(self, page_data: Dict, selected_scanners: List[str] = None) -> List[Dict]:
         """Scan a single page for vulnerabilities"""
         try:
             vulnerabilities = []
             url = page_data.get('url', '')
             forms = page_data.get('forms', [])
             
-            # Initialize scanners
-            scanners = {
-                'xss': XSSScanner(None),  # We don't need the client for page scanning
-                'sqli': SQLiScanner(None),
-                'ssrf': SSRFScanner(None)
-            }
+            # Initialize all available scanners
+            all_scanners = {}
             
-            # Add new scanners if available
-            if CSRFScanner is not None:
-                scanners['csrf'] = CSRFScanner(None)
+            # Only initialize scanners that are selected
+            if selected_scanners is None or 'xss' in selected_scanners:
+                all_scanners['xss'] = XSSScanner(None)
                 
-            if SSTIScanner is not None:
-                scanners['ssti'] = SSTIScanner(None)
+            if selected_scanners is None or 'sqli' in selected_scanners:
+                all_scanners['sqli'] = SQLiScanner(None)
                 
-            if CommandInjectionScanner is not None:
-                scanners['cmd_injection'] = CommandInjectionScanner(None)
+            if selected_scanners is None or 'ssrf' in selected_scanners:
+                all_scanners['ssrf'] = SSRFScanner(None)
+                
+            # Add new scanners if available and selected
+            if CSRFScanner is not None and (selected_scanners is None or 'csrf' in selected_scanners):
+                all_scanners['csrf'] = CSRFScanner(None)
+                
+            if SSTIScanner is not None and (selected_scanners is None or 'ssti' in selected_scanners):
+                all_scanners['ssti'] = SSTIScanner(None)
+                
+            if CommandInjectionScanner is not None and (selected_scanners is None or 'cmdInjection' in selected_scanners):
+                all_scanners['cmd_injection'] = CommandInjectionScanner(None)
+                
+            if PathTraversalScanner is not None and (selected_scanners is None or 'pathTraversal' in selected_scanners):
+                all_scanners['path_traversal'] = PathTraversalScanner(None)
+                
+            if XXEScanner is not None and (selected_scanners is None or 'xxe' in selected_scanners):
+                all_scanners['xxe'] = XXEScanner(None)
             
-            # Run each scanner on the page
-            for scanner_name, scanner in scanners.items():
+            # Run each selected scanner on the page
+            for scanner_name, scanner in all_scanners.items():
                 try:
                     self.logger.info(f"Running {scanner_name.upper()} scanner on {url}")
                     vulns = scanner.scan(url, forms)

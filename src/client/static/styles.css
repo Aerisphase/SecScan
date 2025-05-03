@@ -334,7 +334,8 @@ body {
     background-color: #1e1e1e;
     border-radius: 4px;
     font-family: 'Consolas', 'Monaco', monospace;
-    height: 400px;
+    height: 100%;
+    max-height: 100%;
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -369,6 +370,9 @@ body {
     height: calc(100% - 40px);
     overflow-y: auto;
     padding: 8px;
+    max-height: calc(100% - 40px);
+    scrollbar-width: thin;
+    overflow-x: hidden;
 }
 
 .terminal-line {
@@ -445,14 +449,35 @@ body {
     background: #888;
 }
 
-/* Prevent terminal movement */
-#terminalCard {
+/* Ensure equal height for both cards */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#configCard, #terminalCard {
     position: relative;
+    height: 100%;
+    max-height: 800px;
+    min-height: 700px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+    overflow: hidden;
 }
 
 #terminalCard .card-body {
     padding: 0;
     position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+#configCard .card-body {
+    padding: 1.25rem;
+    position: relative;
+    flex: 1;
+    overflow: visible;
 }
 
 #terminal {

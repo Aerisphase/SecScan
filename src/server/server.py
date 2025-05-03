@@ -28,8 +28,18 @@ from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
 from src.core.reporter import Reporter
-from src.ai.recommender import VulnerabilityRecommender
-from src.ai.vulnerability_analyzer import VulnerabilityAnalyzer
+# Import AI components
+try:
+    from src.ai.recommender import VulnerabilityRecommender
+    from src.ai.vulnerability_analyzer import VulnerabilityAnalyzer
+    recommender = VulnerabilityRecommender()
+    analyzer = VulnerabilityAnalyzer()
+    ai_available = True
+except ImportError as e:
+    print(f"AI components not available: {e}")
+    recommender = None
+    analyzer = None
+    ai_available = False
 
 # Setup logging
 logging.basicConfig(
@@ -75,7 +85,7 @@ app.add_middleware(
 # Models
 class ScanRequest(BaseModel):
     target_url: str
-    scan_type: str = "fast"
+    scanners: List[str] = ["xss", "sqli", "ssrf", "csrf", "ssti", "cmdInjection", "pathTraversal", "xxe"]
     delay: float = 1.0
     max_pages: int = 20
     user_agent: Optional[str] = None
@@ -179,38 +189,59 @@ async def get_recommendations(request: RecommendationRequest, api_key: str = Dep
         )
 
 @app.post("/preventive-measures")
-async def get_preventive_measures(request: RecommendationRequest, api_key: str = Depends(get_api_key)):
-    """Get preventive measures based on code context"""
+async def get_preventive_measures(request: Request, api_key: str = Depends(get_api_key)):
+    data = await request.json()
+    code_context = data.get("code_context", "")
+    
+    # TODO: Implement AI-powered preventive measures
+    measures = [
+        "Implement input validation for all user inputs",
+        "Use parameterized queries for database operations",
+        "Apply Content Security Policy headers",
+        "Sanitize user input before rendering in HTML",
+        "Keep all dependencies up to date"
+    ]
+    
+    return {"measures": measures}
+
+# Endpoint for AI analysis of vulnerabilities
+@app.post("/ai-analyze")
+async def analyze_vulnerabilities(request: Request, api_key: str = Depends(get_api_key)):
+    if not ai_available or not analyzer:
+        return {"error": "AI components not available"}
+        
+    data = await request.json()
+    vulnerabilities = data.get("vulnerabilities", [])
+    
+    # Log received vulnerabilities
+    logging.info(f"[AI ANALYZE] Received {len(vulnerabilities)} vulnerabilities for analysis")
+    
     try:
-        if not request.code_context:
-            raise HTTPException(
-                status_code=400,
-                detail="Code context is required for preventive measures"
-            )
-        measures = recommender.get_preventive_measures(request.code_context)
-        return {"measures": measures}
+        # Use the analyze_vulnerabilities method we added
+        results = analyzer.analyze_vulnerabilities(vulnerabilities)
+        logging.info(f"[AI ANALYZE] Analysis completed successfully")
+        return {"ai_results": results}
     except Exception as e:
-        logger.error(f"Error getting preventive measures: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        logging.error(f"[AI ANALYZE] Error during analysis: {str(e)}")
+        return {"error": f"Analysis failed: {str(e)}"}
 
 @app.post("/ai-analyze")
 async def ai_analyze(request: Request, api_key: str = Depends(get_api_key)):
+    if not ai_available or not analyzer:
+        return {"error": "AI components not available"}
+        
     data = await request.json()
     vulnerabilities = data.get("vulnerabilities", [])
-    print("[AI ANALYZE] Received vulnerabilities:", vulnerabilities)
-    results = []
-    for vuln in vulnerabilities:
-        result = analyzer.analyze_vulnerability(
-            vuln.get("type", ""),
-            vuln.get("evidence", vuln.get("details", "")),
-            vuln.get("payload", "")
-        )
-        results.append(result)
-    print("[AI ANALYZE] AI results:", results)
-    return {"ai_results": results}
+    logging.info(f"[AI ANALYZE] Received {len(vulnerabilities)} vulnerabilities for analysis")
+    
+    try:
+        # Use the analyze_vulnerabilities method we added
+        results = analyzer.analyze_vulnerabilities(vulnerabilities)
+        logging.info(f"[AI ANALYZE] Analysis completed successfully")
+        return {"ai_results": results}
+    except Exception as e:
+        logging.error(f"[AI ANALYZE] Error during analysis: {str(e)}")
+        return {"error": f"Analysis failed: {str(e)}"}
 
 # Modify the scan endpoint to include recommendations
 @app.post("/scan")
@@ -219,8 +250,8 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
         start_time = time.time()
         scan_id = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Set max_pages based on scan type
-        max_pages = 100 if config.scan_type == "full" else config.max_pages
+        # Use the configured max_pages
+        max_pages = config.max_pages
         
         # Initialize components
         crawler = AdvancedCrawler(
@@ -242,7 +273,8 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
         vulnerabilities = []
         for i, page in enumerate(pages, 1):
             await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
-            page_vulns = scanner.scan_page(page)
+            # Pass the selected scanners to the scan_page method
+            page_vulns = scanner.scan_page(page, config.scanners)
             if page_vulns:
                 # Add recommendations to each vulnerability
                 for vuln in page_vulns:
@@ -258,7 +290,7 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
             target_url=config.target_url,
             pages_crawled=len(pages),
             vulnerabilities_found=vulnerabilities,
-            scan_type=config.scan_type,
+            scan_type="custom",  # Using 'custom' since we're using selected scanners now
             elapsed_time=time.time() - start_time
         )
         

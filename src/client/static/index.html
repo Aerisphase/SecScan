@@ -31,16 +31,12 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
         <div class="row">
-            <div class="col-md-8 mx-auto">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="col-md-6">
+                <div class="card" id="configCard">
+                    <div class="card-header">
                         <h5 class="mb-0">Scan Configuration</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="advancedOptions">
-                            <label class="form-check-label" for="advancedOptions">Advanced settings</label>
-                        </div>
                     </div>
                     <div class="card-body">
                         <form id="scanForm">
@@ -55,25 +51,67 @@
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="scanType" class="form-label">
-                                    <i class="bi bi-speedometer2 me-1"></i>Scan Type
+                                <label class="form-label">
+                                    <i class="bi bi-shield-check me-1"></i>Select Scanners
                                 </label>
-                                <select class="form-select" id="scanType">
-                                    <option value="fast">Fast Scan</option>
-                                    <option value="full">Full Scan</option>
-                                </select>
+                                <div class="scanner-checkboxes">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="allScanners" checked>
+                                        <label class="form-check-label fw-bold" for="allScanners">All Scanners</label>
+                                    </div>
+                                    <hr class="my-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="xssScanner" checked>
+                                        <label class="form-check-label" for="xssScanner">XSS Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="sqliScanner" checked>
+                                        <label class="form-check-label" for="sqliScanner">SQL Injection Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="ssrfScanner" checked>
+                                        <label class="form-check-label" for="ssrfScanner">SSRF Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="csrfScanner" checked>
+                                        <label class="form-check-label" for="csrfScanner">CSRF Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="sstiScanner" checked>
+                                        <label class="form-check-label" for="sstiScanner">SSTI Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="cmdInjectionScanner" checked>
+                                        <label class="form-check-label" for="cmdInjectionScanner">Command Injection Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="pathTraversalScanner" checked>
+                                        <label class="form-check-label" for="pathTraversalScanner">Path Traversal Scanner</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="xxeScanner" checked>
+                                        <label class="form-check-label" for="xxeScanner">XXE Scanner</label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="mb-3 advanced-field">
+                                    <div class="mb-3">
                                         <label for="maxPages" class="form-label">
                                             <i class="bi bi-file-earmark-text me-1"></i>Maximum Pages
                                         </label>
-                                        <input type="number" class="form-control" id="maxPages" value="20" min="1" max="100">
+                                        <select class="form-select" id="maxPages">
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="200">200</option>
+                                            <option value="500">500</option>
+                                            <option value="1000">1000</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="mb-3 advanced-field">
+                                    <div class="mb-3">
                                         <label for="delay" class="form-label">
                                             <i class="bi bi-clock me-1"></i>Delay (seconds)
                                         </label>
@@ -81,46 +119,38 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-3 advanced-field">
+                            <div class="mb-3">
                                 <label for="userAgent" class="form-label">
                                     <i class="bi bi-person-circle me-1"></i>User Agent
                                 </label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="userAgent" 
                                         placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                                        pattern="^[a-zA-Z0-9\s\(\)\.\/\-\:\;\,\+\=\_]+$"
+                                        pattern="^[a-zA-Z0-9\s\(\)\.\/-\:\;\,\+\=\_]+$"
                                         maxlength="255">
                                     <button class="btn btn-outline-secondary" type="button" id="randomizeUserAgent">
                                         <i class="bi bi-shuffle"></i>
                                     </button>
                                 </div>
-                                <div class="form-text">
-                                    <small class="text-muted">
-                                        <i class="bi bi-shield-lock me-1"></i>For security and anonymity:
-                                        <ul class="mt-1 mb-0">
-                                            <li>Use a common browser User-Agent to blend in</li>
-                                            <li>Avoid using SecScan's default User-Agent</li>
-                                            <li>Randomize User-Agent for each scan</li>
-                                            <li>Don't include personal or identifiable information</li>
-                                        </ul>
-                                    </small>
-                                </div>
+
                             </div>
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-play-fill me-1"></i>Start Scan
                                 </button>
-                                <button type="button" class="btn btn-info advanced-field" id="testButton" style="display: none;">
+                                <button type="button" class="btn btn-info" id="testButton">
                                     <i class="bi bi-bug-fill me-1"></i>Test
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
-
-                <div class="card mt-4" id="terminalCard">
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card" id="terminalCard">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4><i class="bi bi-terminal me-2"></i>Scan Terminal</h4>
+                        <h5 class="mb-0"><i class="bi bi-terminal me-2"></i>Scan Terminal</h5>
                         <div class="btn-group">
                             <button class="btn btn-sm btn-outline-secondary" id="clearTerminal">
                                 <i class="bi bi-trash me-1"></i>Clear
@@ -140,8 +170,12 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="card mt-4" id="resultsCard" style="display: none;">
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card" id="resultsCard" style="display: none;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4><i class="bi bi-graph-up me-2"></i>Scan Results</h4>
                         <div class="btn-group">
@@ -150,9 +184,6 @@
                             </button>
                             <button class="btn btn-sm btn-outline-secondary" id="clearResults">
                                 <i class="bi bi-trash me-1"></i>Clear
-                            </button>
-                            <button class="btn btn-sm btn-outline-info" id="aiAnalyzeBtn">
-                                <i class="bi bi-cpu me-1"></i>AI Analyze
                             </button>
                         </div>
                     </div>
