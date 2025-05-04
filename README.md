@@ -177,3 +177,13 @@ python src/core/scanner.py --url https://example.com --max-pages 20 --js-enabled
 2. Попробуйте увеличить задержку между запросами: `--delay 2.0`
 3. Используйте режим обхода WAF: `--waf-bypass`
 4. Попробуйте использовать другой user agent
+
+   # Улучшенная обучалка
+python src/ai/training/enhanced_train.py
+
+# Скипнуть стадии
+python src/ai/training/enhanced_train.py --skip-collection
+python src/ai/training/enhanced_train.py --skip-preprocessing
+
+# Для кастомных датафайлов
+python src/ai/training/enhanced_train.py --data-file path/to/data.json
