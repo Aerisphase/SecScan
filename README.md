@@ -79,107 +79,32 @@
 - Контекстный анализ (приоритезация рисков: платежи > блог)
 - Генерация payloads (автоподбор обходных техник для WAF)
 
+### 3.3 Roadmap
+SSRF (Server-Side Request Forgery)
 
+XXE (XML External Entity)
 
-## 4. Установка и использование
+IDOR (Insecure Direct Object References)
 
-### 4.1 Предварительные требования
+File Upload Vulnerabilities
 
-- Python 3.8 или выше
-- Git
-- pip (менеджер пакетов Python)
-- Подключение к интернету для загрузки зависимостей
+Command Injection
 
-### 4.2 Установка
+Path Traversal
 
-#### Клонирование репозитория
-```bash
-git clone https://github.com/Aerisphase/SecScan.git
-cd SecScan
-```
+Broken Authentication
 
-#### Метод 1: Использование setup.py (Рекомендуется)
+Sensitive Data Exposure
 
-Этот метод автоматически установит все зависимости, включая браузерные бинарные файлы Playwright:
+Security Misconfiguration
 
-```bash
-pip install -e .
-```
+Using Components with Known Vulnerabilities
 
-Если установка браузера Playwright не удалась, вы можете установить его вручную:
+Insufficient Logging & Monitoring
 
-```bash
-python -m playwright install chromium
-```
+To train AI:
 
-#### Метод 2: Ручная установка
-
-Установка зависимостей Python:
-
-```bash
-pip install -r requirements.txt
-```
-
-Установка браузерных бинарных файлов Playwright:
-
-```bash
-python -m playwright install chromium
-```
-
-### 4.3 Запуск SecScan
-
-#### Запуск веб-сервера
-
-```bash
-python src/server/server.py
-```
-
-Веб-интерфейс будет доступен по адресу http://localhost:8001 или 8002б 8003 и т.д. (смотрите терминал)
-
-#### Использование командной строки
-
-Вы также можете использовать SecScan из командной строки:
-
-```bash
-python src/core/scanner.py --url https://example.com --max-pages 20 --js-enabled
-```
-
-Основные параметры:
-- `--url`: Целевой URL для сканирования
-- `--max-pages`: Максимальное количество страниц для сканирования (по умолчанию: 20)
-- `--delay`: Задержка между запросами в секундах (по умолчанию: 1.0)
-- `--js-enabled`: Включить рендеринг JavaScript
-- `--waf-bypass`: Включить техники обхода WAF
-- `--user-agent`: Пользовательский строковый агент
-
-### 4.4 Функции
-
-- **Продвинутый веб-краулинг**: Сканирует веб-сайты с поддержкой рендеринга JavaScript
-- **Обход WAF**: Несколько техник для обхода Web Application Firewalls
-- **Управление сессиями**: Поддерживает cookies и обрабатывает CSRF токены
-- **Обнаружение уязвимостей**: Обнаруживает уязвимости из OWASP Top 10
-- **Анализ с использованием ИИ**: Уменьшает количество ложных срабатываний с помощью машинного обучения
-- **Интерактивные отчеты**: Подробные отчеты с рекомендациями по устранению
-
-### 4.5 Устранение неполадок
-
-#### Проблемы с рендерингом JavaScript
-
-Если у вас возникли проблемы с рендерингом JavaScript:
-
-1. Проверьте, установлен ли Playwright: `pip show playwright`
-2. Переустановите бинарные файлы браузера: `python -m playwright install --force chromium`
-3. Проверьте зависимости браузера: `python -m playwright install-deps chromium`
-
-#### Ошибки подключения
-
-Если при сканировании веб-сайтов возникают ошибки подключения:
-
-1. Проверьте ваше интернет-соединение
-2. Попробуйте увеличить задержку между запросами: `--delay 2.0`
-3. Используйте режим обхода WAF: `--waf-bypass`
-4. Попробуйте использовать другой user agent
-
+python src/ai/training/train.py
 
 
 
