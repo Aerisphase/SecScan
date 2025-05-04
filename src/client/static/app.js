@@ -83,15 +83,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Export results
     function exportResults() {
-        const results = {
-            stats: scanStats.innerHTML,
-            vulnerabilities: vulnerabilities.innerHTML
+        // Get the scan data from the UI
+        const scanDate = new Date().toLocaleString();
+        const targetUrl = document.getElementById('targetUrl')?.value || 'Unknown Target';
+        
+        // Create a structured report object
+        const reportData = {
+            scanInfo: {
+                date: scanDate,
+                target: targetUrl,
+                scannerVersion: '1.0.0'
+            },
+            summary: {}
         };
-        const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+        
+        // Extract statistics
+        const statCards = document.querySelectorAll('.stat-card-value');
+        if (statCards.length >= 4) {
+            reportData.summary = {
+                pagesCrawled: statCards[0]?.textContent || '0',
+                linksFound: statCards[1]?.textContent || '0',
+                formsFound: statCards[2]?.textContent || '0',
+                jsEnabled: statCards[3]?.textContent || 'Disabled'
+            };
+        }
+        
+        // Extract vulnerability data
+        reportData.vulnerabilities = [];
+        
+        // Process each vulnerability group
+        const vulnGroups = document.querySelectorAll('.vulnerability-group');
+        vulnGroups.forEach(group => {
+            const groupType = group.querySelector('.vulnerability-group-header h6')?.textContent.trim() || 'Unknown';
+            const groupSeverity = group.className.includes('critical') ? 'critical' : 
+                                 group.className.includes('high') ? 'high' : 
+                                 group.className.includes('medium') ? 'medium' : 'low';
+            
+            // Get individual vulnerabilities in this group
+            const vulnItems = group.querySelectorAll('.vulnerability-item');
+            vulnItems.forEach(item => {
+                const vulnTitle = item.querySelector('h6')?.textContent.trim() || 'Unknown Vulnerability';
+                const vulnDetails = item.querySelectorAll('.vulnerability-details p');
+                const vulnSeverity = item.className.includes('critical') ? 'critical' : 
+                                    item.className.includes('high') ? 'high' : 
+                                    item.className.includes('medium') ? 'medium' : 'low';
+                
+                // Extract parameter, payload, and evidence
+                let parameter = '', payload = '', evidence = '', confidence = '', prevention = '';
+                vulnDetails.forEach(detail => {
+                    const text = detail.textContent;
+                    if (text.includes('Parameter:')) parameter = text.split('Parameter:')[1].trim();
+                    if (text.includes('Payload:')) payload = text.split('Payload:')[1].trim();
+                    if (text.includes('Evidence:')) evidence = text.split('Evidence:')[1].trim();
+                    if (text.includes('Confidence')) confidence = text.match(/Confidence (\d+)%/) ? text.match(/Confidence (\d+)%/)[1] + '%' : '';
+                    if (text.includes('Prevention')) prevention = text.match(/Prevention (\d+)%/) ? text.match(/Prevention (\d+)%/)[1] + '%' : '';
+                });
+                
+                // Extract recommendations
+                const recommendations = [];
+                const recItems = item.querySelectorAll('.recommendations .list-group-item');
+                recItems.forEach(rec => {
+                    recommendations.push(rec.textContent.trim());
+                });
+                
+                // Add to the vulnerability list
+                reportData.vulnerabilities.push({
+                    type: vulnTitle.split(' at ')[0].trim(),
+                    url: vulnTitle.includes(' at ') ? vulnTitle.split(' at ')[1].trim() : '',
+                    severity: vulnSeverity,
+                    parameter: parameter,
+                    payload: payload,
+                    evidence: evidence,
+                    confidence: confidence,
+                    prevention: prevention,
+                    recommendations: recommendations
+                });
+            });
+        });
+        
+        // Count vulnerabilities by severity
+        const severityCounts = {
+            critical: reportData.vulnerabilities.filter(v => v.severity === 'critical').length,
+            high: reportData.vulnerabilities.filter(v => v.severity === 'high').length,
+            medium: reportData.vulnerabilities.filter(v => v.severity === 'medium').length,
+            low: reportData.vulnerabilities.filter(v => v.severity === 'low').length
+        };
+        reportData.summary.vulnerabilitiesBySeverity = severityCounts;
+        reportData.summary.totalVulnerabilities = reportData.vulnerabilities.length;
+        
+        // Generate a formatted report
+        const formattedReport = JSON.stringify(reportData, null, 2);
+        
+        // Create and download the file
+        const blob = new Blob([formattedReport], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `secscan-results-${new Date().toISOString()}.json`;
+        a.download = `secscan-report-${targetUrl.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

@@ -221,6 +221,58 @@ class EnhancedHttpClient:
             
         self.last_request_time = time.time()
 
+    def _get_random_headers(self):
+        """Generate random headers to bypass WAF fingerprinting"""
+        headers = {}
+        
+        # Randomize User-Agent
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 15_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Mobile/15E148 Safari/604.1"
+        ]
+        
+        # Randomize Accept headers
+        accept_variations = [
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+        ]
+        
+        headers["User-Agent"] = random.choice(user_agents)
+        headers["Accept"] = random.choice(accept_variations)
+        headers["Accept-Language"] = random.choice(["en-US,en;q=0.9", "en-GB,en;q=0.8", "en-CA,en;q=0.7,fr-CA;q=0.6"])
+        
+        # Add random innocuous headers to vary fingerprint
+        if random.random() > 0.5:
+            headers["Upgrade-Insecure-Requests"] = "1"
+        
+        if random.random() > 0.7:
+            headers["Accept-Encoding"] = random.choice(["gzip, deflate", "gzip, deflate, br", "br, gzip, deflate"])
+            
+        if random.random() > 0.8:
+            headers["DNT"] = "1"
+            
+        if random.random() > 0.9:
+            headers["Connection"] = random.choice(["keep-alive", "close"])
+            
+        return headers
+        
+    def _adaptive_rate_limit(self, url):
+        """Adjust request timing based on WAF detection"""
+        domain = urlparse(url).netloc
+        
+        if domain in self._detected_wafs:
+            # More random delays for WAF domains
+            delay = random.uniform(2.0, 5.0)
+        else:
+            # Standard delay
+            delay = random.uniform(0.5, 1.5)
+            
+        time.sleep(delay)
+    
     def _detect_waf(self, response: requests.Response) -> Optional[str]:
         """Detect if a WAF is present based on response headers and content"""
         if not response:
@@ -486,13 +538,111 @@ class EnhancedHttpClient:
             self.logger.error(f"Request failed for {url}: {str(e)}")
             return getattr(e, 'response', None)
 
-    def get(self, url: str, **kwargs) -> Optional[requests.Response]:
-        """Make a GET request with enhancements"""
-        return self._make_request('GET', url, **kwargs)
+    def get(self, url: str, headers: Optional[Dict[str, str]] = None, 
+             params: Optional[Dict[str, Any]] = None, 
+             timeout: int = 30, 
+             verify_ssl: bool = False,
+             allow_redirects: bool = True,
+             cookies: Optional[Dict[str, str]] = None) -> Optional[requests.Response]:
+        """
+        Perform a GET request with rate limiting and WAF detection.
+        """
+        try:
+            # Use adaptive rate limiting based on WAF detection
+            domain = urlparse(url).netloc
+            if domain in self._detected_wafs:
+                self._adaptive_rate_limit(url)
+            else:
+                self._rate_limit()
+            
+            # Get random headers for WAF evasion
+            random_headers = self._get_random_headers()
+            
+            # Merge headers with default headers and random headers
+            merged_headers = self.headers.copy()
+            merged_headers.update(random_headers)
+            if headers:
+                merged_headers.update(headers)
+                
+            # Create session if needed
+            if not self.session:
+                self._create_session()
+                
+            # Perform request
+            response = self.session.get(
+                url, 
+                headers=merged_headers,
+                params=params,
+                timeout=timeout,
+                verify=verify_ssl,
+                allow_redirects=allow_redirects,
+                cookies=cookies
+            )
+            
+            # Check for WAF
+            waf = self._detect_waf(response)
+            if waf:
+                self.logger.debug(f"WAF detected: {waf} at {url}")
+                
+            return response
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request failed for {url}: {str(e)}")
+            return getattr(e, 'response', None)
 
-    def post(self, url: str, data: Optional[Dict[str, Any]] = None, **kwargs) -> Optional[requests.Response]:
-        """Make a POST request with enhancements"""
-        return self._make_request('POST', url, data=data, **kwargs)
+    def post(self, url: str, data: Optional[Dict[str, Any]] = None, 
+             headers: Optional[Dict[str, str]] = None, 
+             params: Optional[Dict[str, Any]] = None, 
+             timeout: int = 30, 
+             verify_ssl: bool = False,
+             allow_redirects: bool = True,
+             cookies: Optional[Dict[str, str]] = None) -> Optional[requests.Response]:
+        """
+        Perform a POST request with rate limiting and WAF detection.
+        """
+        try:
+            # Use adaptive rate limiting based on WAF detection
+            domain = urlparse(url).netloc
+            if domain in self._detected_wafs:
+                self._adaptive_rate_limit(url)
+            else:
+                self._rate_limit()
+            
+            # Get random headers for WAF evasion
+            random_headers = self._get_random_headers()
+            
+            # Merge headers with default headers and random headers
+            merged_headers = self.headers.copy()
+            merged_headers.update(random_headers)
+            if headers:
+                merged_headers.update(headers)
+                
+            # Create session if needed
+            if not self.session:
+                self._create_session()
+                
+            # Perform request
+            response = self.session.post(
+                url, 
+                headers=merged_headers,
+                data=data,
+                params=params,
+                timeout=timeout,
+                verify=verify_ssl,
+                allow_redirects=allow_redirects,
+                cookies=cookies
+            )
+            
+            # Check for WAF
+            waf = self._detect_waf(response)
+            if waf:
+                self.logger.debug(f"WAF detected: {waf} at {url}")
+                
+            return response
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request failed for {url}: {str(e)}")
+            return getattr(e, 'response', None)
         
     def put(self, url: str, data: Optional[Dict[str, Any]] = None, **kwargs) -> Optional[requests.Response]:
         """Make a PUT request with enhancements"""

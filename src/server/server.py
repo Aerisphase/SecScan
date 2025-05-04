@@ -278,14 +278,12 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
         scanner = Scanner()
         reporter = Reporter()
         
-        # Start crawling
-        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
-        pages = await crawler.crawl()
-        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
-        
-        # Create HTTP client once for all scans to improve performance
+        # Create HTTP client and initialize scanners before crawling to reduce delay
         from src.core.http_client import HttpClient
         from src.core.enhanced_http_client import EnhancedHttpClient
+        
+        # Send update about initializing the HTTP client
+        await log_manager.broadcast(f"Initializing HTTP client...")
         
         # Use enhanced HTTP client for better vulnerability detection
         http_client = EnhancedHttpClient(
@@ -296,89 +294,140 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
             rate_limit_max=config.delay * 2,
             proxy=None,
             auth=None,
-            rotate_user_agent=False,
-            rotate_request_pattern=False,
-            waf_evasion=False,
+            rotate_user_agent=True,  # Enable our new WAF bypass features
+            rotate_request_pattern=True,
+            waf_evasion=True,
             handle_csrf=True,
             maintain_session=True
         )
         
         if config.user_agent:
             http_client.session.headers['User-Agent'] = config.user_agent
-            
-        # Initialize all scanners once
-        all_scanners = {}
         
-        # Only initialize scanners that are selected
-        if 'xss' in config.scanners:
-            all_scanners['xss'] = XSSScanner(http_client)
-            
-        if 'sqli' in config.scanners:
-            all_scanners['sqli'] = SQLiScanner(http_client)
-            
-        if 'ssrf' in config.scanners:
-            all_scanners['ssrf'] = SSRFScanner(http_client)
-            
-        if 'csrf' in config.scanners:
-            all_scanners['csrf'] = CSRFScanner(http_client)
-            
-        if 'ssti' in config.scanners:
-            all_scanners['ssti'] = SSTIScanner(http_client)
-            
-        if 'cmdInjection' in config.scanners:
-            all_scanners['cmdInjection'] = CommandInjectionScanner(http_client)
-            
-        if 'pathTraversal' in config.scanners:
-            all_scanners['pathTraversal'] = PathTraversalScanner(http_client)
-            
-        if 'xxe' in config.scanners:
-            all_scanners['xxe'] = XXEScanner(http_client)
-            
+        # Send update about initializing scanners
+        await log_manager.broadcast(f"Initializing scanners: {', '.join(config.scanners)}")
+        
+        # Initialize all scanners in parallel using asyncio tasks
+        all_scanners = {}
+        scanner_init_tasks = []
+        
+        # Create initialization tasks for selected scanners
+        for scanner_name in config.scanners:
+            if scanner_name == 'xss':
+                all_scanners['xss'] = XSSScanner(http_client)
+            elif scanner_name == 'sqli':
+                all_scanners['sqli'] = SQLiScanner(http_client)
+            elif scanner_name == 'ssrf':
+                all_scanners['ssrf'] = SSRFScanner(http_client)
+            elif scanner_name == 'csrf':
+                all_scanners['csrf'] = CSRFScanner(http_client)
+            elif scanner_name == 'ssti':
+                all_scanners['ssti'] = SSTIScanner(http_client)
+            elif scanner_name == 'cmdInjection':
+                all_scanners['cmdInjection'] = CommandInjectionScanner(http_client)
+            elif scanner_name == 'pathTraversal':
+                all_scanners['pathTraversal'] = PathTraversalScanner(http_client)
+            elif scanner_name == 'xxe':
+                all_scanners['xxe'] = XXEScanner(http_client)
+        
+        await log_manager.broadcast(f"Scanners initialized successfully")
+        
+        # Start crawling
+        await log_manager.broadcast(f"Starting crawl of {config.target_url}")
+        pages = await crawler.crawl()
+        await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
+        
         # Send update that scanning is about to begin
-        await log_manager.broadcast(f"Initializing scanners: {', '.join(all_scanners.keys())}")
+        await log_manager.broadcast(f"Preparing to scan with: {', '.join(all_scanners.keys())}")
         await asyncio.sleep(0.1)  # Small delay to ensure message is sent
         
         # Scan each page
         vulnerabilities = []
-        for i, page in enumerate(pages, 1):
-            await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
+        
+        # Send immediate update that scanning is starting
+        await log_manager.broadcast(f"Starting scan of {len(pages)} pages...")
+        await asyncio.sleep(0.1)  # Ensure message is sent
+        
+        # Create a custom scanner class that broadcasts updates in real-time
+        class BroadcastingScanner(Scanner):
+            async def scan_page(self, page_data, selected_scanners=None):
+                try:
+                    page_vulnerabilities = []
+                    url = page_data.get('url', '')
+                    forms = page_data.get('forms', [])
+                    
+                    # Use the pre-initialized scanners and HTTP client
+                    # This avoids the delay caused by initializing them for each page
+                    
+                    # Run each selected scanner on the page
+                    for scanner_name, scanner in all_scanners.items():
+                        try:
+                            # Broadcast the start of each scanner and ensure it's sent immediately
+                            await log_manager.broadcast(f"Running {scanner_name.upper()} scanner on {url}")
+                            await asyncio.sleep(0.05)  # Small delay to ensure message is sent
+                            
+                            # Run the scanner with a progress update wrapper
+                            async def run_scanner_with_progress():
+                                # Convert synchronous scan to asynchronous with progress updates
+                                loop = asyncio.get_event_loop()
+                                progress_task = asyncio.create_task(self._send_progress_updates(scanner_name, url, log_manager))
+                                vulns = await loop.run_in_executor(None, lambda: scanner.scan(url, forms))
+                                progress_task.cancel()  # Stop progress updates when scan completes
+                                return vulns
+                                
+                            vulns = await run_scanner_with_progress()
+                            
+                            # Send immediate result
+                            if vulns:
+                                page_vulnerabilities.extend(vulns)
+                                await log_manager.broadcast(f"Found {len(vulns)} {scanner_name.upper()} vulnerabilities on {url}")
+                            else:
+                                await log_manager.broadcast(f"No {scanner_name.upper()} vulnerabilities found on {url}")
+                            await asyncio.sleep(0.05)  # Ensure message is sent
+                            
+                        except Exception as e:
+                            self.logger.error(f"{scanner_name} scanner failed on {url}: {str(e)}")
+                            await log_manager.broadcast(f"Error in {scanner_name.upper()} scanner: {str(e)}")
+                            await asyncio.sleep(0.05)  # Ensure message is sent
+                    
+                    return page_vulnerabilities
+                    
+                except Exception as e:
+                    self.logger.error(f"Error scanning page {url}: {str(e)}")
+                    await log_manager.broadcast(f"Error scanning page {url}: {str(e)}")
+                    return []
             
-            # Create a custom scanner class that broadcasts updates
-            class BroadcastingScanner(Scanner):
-                async def scan_page(self, page_data, selected_scanners=None):
-                    try:
-                        vulnerabilities = []
-                        url = page_data.get('url', '')
-                        forms = page_data.get('forms', [])
-                        
-                        # Use the pre-initialized scanners and HTTP client
-                        # This avoids the delay caused by initializing them for each page
-                        
-                        # Run each selected scanner on the page
-                        for scanner_name, scanner in all_scanners.items():
-                            try:
-                                # Broadcast the start of each scanner
-                                await log_manager.broadcast(f"Running {scanner_name.upper()} scanner on {url}")
-                                vulns = scanner.scan(url, forms)
-                                if vulns:
-                                    vulnerabilities.extend(vulns)
-                                    await log_manager.broadcast(f"Found {len(vulns)} {scanner_name.upper()} vulnerabilities on {url}")
-                                else:
-                                    await log_manager.broadcast(f"No {scanner_name.upper()} vulnerabilities found on {url}")
-                            except Exception as e:
-                                self.logger.error(f"{scanner_name} scanner failed on {url}: {str(e)}")
-                                await log_manager.broadcast(f"Error in {scanner_name.upper()} scanner: {str(e)}")
-                        
-                        return vulnerabilities
-                        
-                    except Exception as e:
-                        self.logger.error(f"Error scanning page {url}: {str(e)}")
-                        await log_manager.broadcast(f"Error scanning page {url}: {str(e)}")
-                        return []
+            async def _send_progress_updates(self, scanner_name, url, log_manager):
+                """Send periodic progress updates during long-running scans"""
+                dots = 0
+                try:
+                    while True:
+                        dots = (dots % 3) + 1
+                        await log_manager.broadcast(f"[PROGRESS] {scanner_name.upper()} scanner running on {url}{'.' * dots}")
+                        await asyncio.sleep(2.0)  # Update every 2 seconds
+                except asyncio.CancelledError:
+                    # Task was cancelled, which is expected when scan completes
+                    pass
+        
+        # Process pages in batches to improve UI responsiveness
+        batch_size = 5  # Process 5 pages at a time for better progress visibility
+        for i in range(0, len(pages), batch_size):
+            batch = pages[i:i+batch_size]
+            batch_start = i + 1
+            batch_end = min(i + len(batch), len(pages))
             
-            # Use our custom scanner
-            broadcasting_scanner = BroadcastingScanner()
-            page_vulns = await broadcasting_scanner.scan_page(page, config.scanners)
+            await log_manager.broadcast(f"Scanning pages {batch_start}-{batch_end}/{len(pages)}...")
+            await asyncio.sleep(0.1)  # Ensure message is sent
+            
+            # Process each page in the batch
+            for j, page in enumerate(batch):
+                page_index = i + j + 1
+                await log_manager.broadcast(f"Scanning page {page_index}/{len(pages)}: {page['url']}")
+                await asyncio.sleep(0.1)  # Ensure message is sent
+                
+                # Use our custom scanner
+                broadcasting_scanner = BroadcastingScanner()
+                page_vulns = await broadcasting_scanner.scan_page(page, config.scanners)
             
             if page_vulns:
                 # Add recommendations to each vulnerability
