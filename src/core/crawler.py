@@ -18,13 +18,18 @@ class AdvancedCrawler:
         self.base_url = base_url
         self.max_pages = max_pages
         self.delay = delay
-        self.user_agent = user_agent or "SecScan/1.0"
+        self.user_agent = user_agent or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         self.visited_urls = set()
         self.pages = []
         self.session = None
         self.connector = None
         self.semaphore = Semaphore(10)  # Limit concurrent requests
         self.queue = asyncio.Queue()  # Queue for URLs to process
+        
+        # Normalize the base URL to ensure it ends with a slash if it's a domain root
+        parsed = urlparse(self.base_url)
+        if not parsed.path or parsed.path == '/':
+            self.base_url = f"{parsed.scheme}://{parsed.netloc}/"
         
     async def __aenter__(self):
         # Create a TCP connector with connection pooling
@@ -35,7 +40,14 @@ class AdvancedCrawler:
             ssl=False  # Disable SSL verification for speed
         )
         self.session = aiohttp.ClientSession(
-            headers={'User-Agent': self.user_agent},
+            headers={
+                'User-Agent': self.user_agent,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            },
             connector=self.connector,
             timeout=aiohttp.ClientTimeout(total=30)  # Set timeout
         )
@@ -115,10 +127,9 @@ class AdvancedCrawler:
         if url in self.visited_urls:
             return
             
-        # Check if this is a known problematic site
-        is_juice_shop = 'juice-shop' in url.lower() or 'herokuapp.com' in url.lower()
-        max_retries = 3 if is_juice_shop else 1
-        retry_delay = 2.0 if is_juice_shop else self.delay
+        # Use consistent retry settings for all sites
+        max_retries = 3
+        retry_delay = self.delay
         
         async with self.semaphore:  # Limit concurrent requests
             self.visited_urls.add(url)
@@ -126,73 +137,128 @@ class AdvancedCrawler:
             success = False
             for attempt in range(max_retries):
                 try:
-                    # Add special headers for Juice Shop to avoid detection
-                    headers = {}
-                    if is_juice_shop:
-                        headers = {
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                            'Accept-Language': 'en-US,en;q=0.5',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1',
-                            'Cache-Control': 'max-age=0'
-                        }
+                    # Use standard browser-like headers for all sites
+                    headers = {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Cache-Control': 'max-age=0'
+                    }
                     
                     async with self.session.get(url, headers=headers if headers else None, timeout=aiohttp.ClientTimeout(total=30)) as response:
                         if response.status == 200:
-                            content = await response.text()
-                            soup = BeautifulSoup(content, 'html.parser')
+                            # Check content type to avoid processing binary files
+                            content_type = response.headers.get('Content-Type', '').lower()
                             
-                            # Extract page data
-                            page_data = {
-                                'url': url,
-                                'title': soup.title.string if soup.title else '',
-                                'forms': self._extract_forms(soup),
-                                'links': self._extract_links(soup, url),
-                                'content': content
-                            }
-                            
-                            self.pages.append(page_data)
-                            logger.info(f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})")
-                            
-                            # Add discovered links to queue
-                            for link in page_data['links']:
-                                if len(self.visited_urls) < self.max_pages and link not in self.visited_urls:
-                                    await self.queue.put(link)
-                            
-                            # Success, no need to retry
-                            success = True
-                            break
+                            # Skip binary files like images, videos, etc.
+                            if any(binary_type in content_type for binary_type in ['image/', 'video/', 'audio/', 'application/octet-stream', 'application/pdf', 'application/zip', 'application/x-zip']) or url.lower().endswith(('.zip', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.mp3', '.mp4')):
+                                logger.info(f"Skipping binary file: {url} (Content-Type: {content_type})")
+                                success = True
+                                break
+                                
+                            try:
+                                                # First check content-type header for obvious binary files
+                                content_type = response.headers.get('Content-Type', '').lower()
+                                
+                                # Try to get text content directly
+                                try:
+                                    content = await response.text()
+                                    
+                                    # Skip empty or very short content
+                                    if not content or len(content.strip()) < 10:
+                                        logger.info(f"Empty or very short content from {url}")
+                                        success = True
+                                        break
+                                    
+                                    # Additional check: if content is short and contains mostly non-text chars,
+                                    # it might be binary despite successful decoding
+                                    if len(content) < 100 and sum(c.isalnum() or c.isspace() for c in content) / len(content) < 0.3:
+                                        logger.info(f"Content appears to be binary despite successful decoding: {url}")
+                                        success = True
+                                        break
+                                        
+                                except UnicodeDecodeError as e:
+                                    # It's binary data
+                                    logger.info(f"Cannot decode content from {url}: {str(e)}")
+                                    success = True
+                                    break
+                                    
+                                soup = BeautifulSoup(content, 'html.parser')
+                                
+                                # Extract page data
+                                page_data = {
+                                    'url': url,
+                                    'title': soup.title.string if soup.title else '',
+                                    'forms': self._extract_forms(soup),
+                                    'links': self._extract_links(soup, url),
+                                    'content': content
+                                }
+                                
+                                self.pages.append(page_data)
+                                logger.info(f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})")
+                                
+                                # Add discovered links to queue
+                                for link in page_data['links']:
+                                    if len(self.visited_urls) < self.max_pages and link not in self.visited_urls:
+                                        await self.queue.put(link)
+                                
+                                # Success, no need to retry
+                                success = True
+                                break
+                                
+                            except UnicodeDecodeError as e:
+                                logger.info(f"Cannot decode content from {url}: {str(e)}")
+                                # Mark as visited but don't process further
+                                success = True
+                                break
                         elif response.status == 429:  # Too Many Requests
                             logger.warning(f"Rate limited on {url}, attempt {attempt+1}/{max_retries}")
                             if attempt < max_retries - 1:
                                 await asyncio.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                        elif response.status == 404:  # Not Found
+                            # Handle 404 errors gracefully - mark as visited but don't retry
+                            logger.info(f"Resource not found (404): {url}")
+                            success = True
+                            break
                         else:
                             logger.warning(f"Received status {response.status} for {url}, attempt {attempt+1}/{max_retries}")
                             if attempt < max_retries - 1:
                                 await asyncio.sleep(retry_delay)
                 except aiohttp.ClientConnectorError as e:
                     logger.error(f"Connection error while crawling {url}: {str(e)}")
-                    if attempt < max_retries - 1 and is_juice_shop:
+                    if attempt < max_retries - 1:
                         logger.info(f"Retrying {url}, attempt {attempt+1}/{max_retries}")
                         await asyncio.sleep(retry_delay * (attempt + 1))
                     else:
                         break
                 except aiohttp.ClientError as e:
                     logger.error(f"Client error while crawling {url}: {str(e)}")
-                    if attempt < max_retries - 1 and is_juice_shop:
+                    if attempt < max_retries - 1:
+                        logger.info(f"Retrying {url}, attempt {attempt+1}/{max_retries}")
                         await asyncio.sleep(retry_delay * (attempt + 1))
                     else:
                         break
                 except asyncio.TimeoutError:
                     logger.error(f"Timeout while crawling {url}")
                     if attempt < max_retries - 1:
+                        logger.info(f"Retrying {url} after timeout, attempt {attempt+1}/{max_retries}")
                         await asyncio.sleep(retry_delay * (attempt + 1))
                     else:
                         break
                 except ConnectionResetError as e:
                     logger.error(f"Connection reset while crawling {url}: {str(e)}")
                     if attempt < max_retries - 1:
-                        await asyncio.sleep(retry_delay * (attempt + 1))
+                        logger.info(f"Retrying {url} after connection reset, attempt {attempt+1}/{max_retries}")
+                        await asyncio.sleep(retry_delay * (attempt + 2))  # Longer delay for connection resets
+                    else:
+                        break
+                except OSError as e:
+                    # Handle "The specified network name is no longer available" and similar OS-level errors
+                    logger.error(f"OS error while crawling {url}: {str(e)}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"Retrying {url} after OS error, attempt {attempt+1}/{max_retries}")
+                        await asyncio.sleep(retry_delay * (attempt + 2))  # Longer delay for OS errors
                     else:
                         break
                 except Exception as e:
@@ -229,13 +295,27 @@ class AdvancedCrawler:
         
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
+            
+            # Skip empty hrefs, javascript: links, and anchors
+            if not href or href.startswith(('javascript:', '#')) or href == '/':
+                continue
+                
+            # Handle absolute URLs
             if href.startswith(('http://', 'https://')):
                 if urlparse(href).netloc == base_domain:
                     links.add(href)
+            # Handle relative URLs
             else:
-                absolute_url = urljoin(base_url, href)
-                if urlparse(absolute_url).netloc == base_domain:
+                # Special case for Google Gruyere which uses fragment identifiers as paths
+                if href.startswith('/#'):
+                    # Convert fragment identifier to a real path
+                    clean_href = href.replace('/#', '/')
+                    absolute_url = urljoin(base_url, clean_href)
                     links.add(absolute_url)
+                else:
+                    absolute_url = urljoin(base_url, href)
+                    if urlparse(absolute_url).netloc == base_domain:
+                        links.add(absolute_url)
                     
         return list(links)
 

@@ -24,6 +24,12 @@ sys.path.append(project_root)
 
 from src.core.scanners.xss import XSSScanner
 from src.core.scanners.sqli import SQLiScanner
+from src.core.scanners.ssrf import SSRFScanner
+from src.core.scanners.csrf import CSRFScanner
+from src.core.scanners.ssti import SSTIScanner
+from src.core.scanners.command_injection import CommandInjectionScanner
+from src.core.scanners.path_traversal import PathTraversalScanner
+from src.core.scanners.xxe import XXEScanner
 from src.core.crawler import AdvancedCrawler
 from src.config import API_KEY, API_KEY_NAME
 from src.core.scanner import Scanner
@@ -277,12 +283,103 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
         pages = await crawler.crawl()
         await log_manager.broadcast(f"Crawling completed. Found {len(pages)} pages")
         
+        # Create HTTP client once for all scans to improve performance
+        from src.core.http_client import HttpClient
+        from src.core.enhanced_http_client import EnhancedHttpClient
+        
+        # Use enhanced HTTP client for better vulnerability detection
+        http_client = EnhancedHttpClient(
+            verify_ssl=False,
+            timeout=10,
+            max_retries=3,
+            rate_limit_min=config.delay,
+            rate_limit_max=config.delay * 2,
+            proxy=None,
+            auth=None,
+            rotate_user_agent=False,
+            rotate_request_pattern=False,
+            waf_evasion=False,
+            handle_csrf=True,
+            maintain_session=True
+        )
+        
+        if config.user_agent:
+            http_client.session.headers['User-Agent'] = config.user_agent
+            
+        # Initialize all scanners once
+        all_scanners = {}
+        
+        # Only initialize scanners that are selected
+        if 'xss' in config.scanners:
+            all_scanners['xss'] = XSSScanner(http_client)
+            
+        if 'sqli' in config.scanners:
+            all_scanners['sqli'] = SQLiScanner(http_client)
+            
+        if 'ssrf' in config.scanners:
+            all_scanners['ssrf'] = SSRFScanner(http_client)
+            
+        if 'csrf' in config.scanners:
+            all_scanners['csrf'] = CSRFScanner(http_client)
+            
+        if 'ssti' in config.scanners:
+            all_scanners['ssti'] = SSTIScanner(http_client)
+            
+        if 'cmdInjection' in config.scanners:
+            all_scanners['cmdInjection'] = CommandInjectionScanner(http_client)
+            
+        if 'pathTraversal' in config.scanners:
+            all_scanners['pathTraversal'] = PathTraversalScanner(http_client)
+            
+        if 'xxe' in config.scanners:
+            all_scanners['xxe'] = XXEScanner(http_client)
+            
+        # Send update that scanning is about to begin
+        await log_manager.broadcast(f"Initializing scanners: {', '.join(all_scanners.keys())}")
+        await asyncio.sleep(0.1)  # Small delay to ensure message is sent
+        
         # Scan each page
         vulnerabilities = []
         for i, page in enumerate(pages, 1):
             await log_manager.broadcast(f"Scanning page {i}/{len(pages)}: {page['url']}")
-            # Pass the selected scanners to the scan_page method
-            page_vulns = scanner.scan_page(page, config.scanners)
+            
+            # Create a custom scanner class that broadcasts updates
+            class BroadcastingScanner(Scanner):
+                async def scan_page(self, page_data, selected_scanners=None):
+                    try:
+                        vulnerabilities = []
+                        url = page_data.get('url', '')
+                        forms = page_data.get('forms', [])
+                        
+                        # Use the pre-initialized scanners and HTTP client
+                        # This avoids the delay caused by initializing them for each page
+                        
+                        # Run each selected scanner on the page
+                        for scanner_name, scanner in all_scanners.items():
+                            try:
+                                # Broadcast the start of each scanner
+                                await log_manager.broadcast(f"Running {scanner_name.upper()} scanner on {url}")
+                                vulns = scanner.scan(url, forms)
+                                if vulns:
+                                    vulnerabilities.extend(vulns)
+                                    await log_manager.broadcast(f"Found {len(vulns)} {scanner_name.upper()} vulnerabilities on {url}")
+                                else:
+                                    await log_manager.broadcast(f"No {scanner_name.upper()} vulnerabilities found on {url}")
+                            except Exception as e:
+                                self.logger.error(f"{scanner_name} scanner failed on {url}: {str(e)}")
+                                await log_manager.broadcast(f"Error in {scanner_name.upper()} scanner: {str(e)}")
+                        
+                        return vulnerabilities
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error scanning page {url}: {str(e)}")
+                        await log_manager.broadcast(f"Error scanning page {url}: {str(e)}")
+                        return []
+            
+            # Use our custom scanner
+            broadcasting_scanner = BroadcastingScanner()
+            page_vulns = await broadcasting_scanner.scan_page(page, config.scanners)
+            
             if page_vulns:
                 # Add recommendations to each vulnerability
                 for vuln in page_vulns:
@@ -291,7 +388,10 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
                     vuln['prevention_score'] = recommendations['prevention_score']
                     vuln['confidence'] = recommendations['confidence']
                 vulnerabilities.extend(page_vulns)
-                await log_manager.broadcast(f"Found {len(page_vulns)} vulnerabilities on {page['url']}")
+                await log_manager.broadcast(f"Found {len(page_vulns)} total vulnerabilities on {page['url']}")
+            else:
+                await log_manager.broadcast(f"No vulnerabilities found on {page['url']}")
+
         
         # Generate report
         report = reporter.generate_report(

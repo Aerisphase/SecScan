@@ -88,6 +88,10 @@ class EnhancedHttpClient:
             handle_csrf: Whether to automatically handle CSRF tokens
             maintain_session: Whether to maintain session cookies
         """
+        # Suppress SSL warnings if verify_ssl is False
+        if not verify_ssl:
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         self.verify_ssl = verify_ssl
         self.timeout = timeout
         self.max_retries = max_retries
@@ -102,7 +106,7 @@ class EnhancedHttpClient:
         self.maintain_session = maintain_session
         
         self.last_request_time = 0
-        self.logger = logging.getLogger('EnhancedHttpClient')
+        self.logger = logging.getLogger(self.__class__.__name__)
         
         # Session and cookie management
         self.session = requests.Session()
@@ -111,6 +115,9 @@ class EnhancedHttpClient:
         
         # CSRF token cache
         self.csrf_tokens = {}
+        
+        # Track domains where we've already detected WAFs to reduce log noise
+        self._detected_wafs = set()
         
         # WAF detection patterns
         self.waf_signatures = [
@@ -219,12 +226,10 @@ class EnhancedHttpClient:
         if not response:
             return None
             
-        # Check status code for typical WAF responses
-        if response.status_code in [403, 406, 429]:
-            # Higher chance of WAF
-            waf_likelihood = 0.7
-        else:
-            waf_likelihood = 0.3
+        # Skip WAF detection for most requests to reduce noise
+        # Only detect WAF on suspicious responses
+        if response.status_code not in [403, 406, 429, 401, 418, 444]:
+            return None
             
         # Check headers for WAF signatures
         headers_str = str(response.headers).lower()
@@ -232,7 +237,11 @@ class EnhancedHttpClient:
         
         for waf_name, pattern in self.waf_signatures:
             if re.search(pattern, headers_str, re.IGNORECASE) or re.search(pattern, content, re.IGNORECASE):
-                self.logger.warning(f"Detected {waf_name} WAF")
+                # Only log WAF detection once per domain to reduce noise
+                domain = urlparse(response.url).netloc
+                if domain not in self._detected_wafs:
+                    self.logger.warning(f"Detected {waf_name} WAF on {domain}")
+                    self._detected_wafs.add(domain)
                 return waf_name
                 
         # Check for common WAF response patterns in content
@@ -244,7 +253,10 @@ class EnhancedHttpClient:
         
         for pattern in waf_content_patterns:
             if re.search(pattern, content, re.IGNORECASE):
-                self.logger.warning("Detected generic WAF based on response content")
+                domain = urlparse(response.url).netloc
+                if domain not in self._detected_wafs:
+                    self.logger.warning(f"Detected generic WAF on {domain}")
+                    self._detected_wafs.add(domain)
                 return "Generic WAF"
                 
         return None
@@ -313,6 +325,26 @@ class EnhancedHttpClient:
         
         # Add random delay
         time.sleep(random.uniform(1.0, 3.0))
+        
+        # Apply improved general WAF evasion techniques
+        # Use a more realistic browser profile
+        evasion_params['headers'] = {
+            # Use a standard browser user agent
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            # Set referer to the site itself to appear as normal navigation
+            'Referer': urlparse(url).scheme + "://" + urlparse(url).netloc,
+            # Standard browser headers
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
+        
+        # Add some randomization to appear more human-like
+        if random.random() > 0.7:
+            # Sometimes add a random delay to simulate human behavior
+            time.sleep(random.uniform(1.0, 3.0))
         
         # WAF-specific evasion techniques
         if detected_waf:
