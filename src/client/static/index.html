@@ -119,6 +119,98 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div class="mb-3">
+                                <div class="advanced-options-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#advancedOptionsCollapse" aria-expanded="false" aria-controls="advancedOptionsCollapse">
+                                    <i class="bi bi-gear-fill me-2 text-info"></i>
+                                    <span class="fw-bold">Advanced Options</span>
+                                    <i class="bi bi-chevron-down ms-auto"></i>
+                                </div>
+                                <div class="collapse mt-3" id="advancedOptionsCollapse">
+                                    <!-- JavaScript Rendering Section -->
+                                    <div class="mb-3 pb-3 border-bottom">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div>
+                                                <i class="bi bi-browser-chrome me-2 text-info"></i>
+                                                <span class="fw-bold">JavaScript Rendering</span>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="jsEnabled">
+                                            </div>
+                                        </div>
+                                        <div class="js-options mt-3" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-2">
+                                                        <label for="browserTimeout" class="form-label small">Browser Timeout (ms)</label>
+                                                        <select class="form-select form-select-sm" id="browserTimeout">
+                                                            <option value="10000">10 seconds</option>
+                                                            <option value="20000">20 seconds</option>
+                                                            <option value="30000" selected>30 seconds</option>
+                                                            <option value="60000">60 seconds</option>
+                                                            <option value="120000">120 seconds</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Wait for network idle</span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" id="waitForIdle" checked>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- WAF Bypass Section -->
+                                    <div class="mb-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div>
+                                                <i class="bi bi-shield-lock me-2 text-warning"></i>
+                                                <span class="fw-bold">WAF Bypass & Session Management</span>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input waf-switch" type="checkbox" id="wafEvasion">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="waf-options mt-3" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Rotate user agents</span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" id="rotateUserAgent">
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Maintain session cookies</span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" id="maintainSession" checked>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Handle CSRF tokens</span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" id="handleCsrf" checked>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <span>Randomize headers</span>
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" id="randomizeHeaders">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="mb-3">
                                 <label for="userAgent" class="form-label">
                                     <i class="bi bi-person-circle me-1"></i>User Agent

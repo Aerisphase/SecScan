@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const randomizeUserAgentBtn = document.getElementById('randomizeUserAgent');
     const testButton = document.getElementById('testButton');
     const terminalContent = document.getElementById('terminalContent');
+    const jsEnabledCheckbox = document.getElementById('jsEnabled');
+    const jsOptionsDiv = document.querySelector('.js-options');
+    const wafOptionsDiv = document.querySelector('.waf-options');
     const terminalStatus = document.querySelector('.terminal-status');
 
     // API configuration
@@ -313,6 +316,86 @@ document.addEventListener('DOMContentLoaded', () => {
         allScannersCheckbox.checked = allChecked;
     }
     
+    // Advanced Options handling
+    const advancedOptionsHeader = document.querySelector('.advanced-options-header');
+    const advancedOptionsCollapse = document.getElementById('advancedOptionsCollapse');
+    const chevronIcon = advancedOptionsHeader?.querySelector('.bi-chevron-down');
+    const wafEvasionCheckbox = document.getElementById('wafEvasion');
+    const randomizeHeadersCheckbox = document.getElementById('randomizeHeaders');
+    const rotateUserAgentCheckbox = document.getElementById('rotateUserAgent');
+    
+    // Initialize Bootstrap collapse
+    let advancedCollapse;
+    if (advancedOptionsCollapse) {
+        advancedCollapse = new bootstrap.Collapse(advancedOptionsCollapse, {
+            toggle: false
+        });
+    }
+    
+    // Toggle advanced options section
+    if (advancedOptionsHeader) {
+        advancedOptionsHeader.addEventListener('click', function() {
+            if (advancedCollapse) {
+                advancedCollapse.toggle();
+                if (chevronIcon) {
+                    if (advancedOptionsCollapse.classList.contains('show')) {
+                        chevronIcon.classList.remove('bi-chevron-down');
+                        chevronIcon.classList.add('bi-chevron-up');
+                    } else {
+                        chevronIcon.classList.remove('bi-chevron-up');
+                        chevronIcon.classList.add('bi-chevron-down');
+                    }
+                }
+            }
+        });
+    }
+    
+    // JavaScript rendering options
+    if (jsEnabledCheckbox && jsOptionsDiv) {
+        // Show/hide JS options based on checkbox state
+        jsEnabledCheckbox.addEventListener('change', function() {
+            jsOptionsDiv.style.display = this.checked ? 'block' : 'none';
+            
+            // Auto-expand advanced options when JavaScript rendering is enabled
+            if (this.checked && advancedOptionsCollapse && !advancedOptionsCollapse.classList.contains('show') && advancedCollapse) {
+                advancedCollapse.show();
+                if (chevronIcon) {
+                    chevronIcon.classList.remove('bi-chevron-down');
+                    chevronIcon.classList.add('bi-chevron-up');
+                }
+            }
+        });
+        
+        // Initialize JS options visibility
+        jsOptionsDiv.style.display = jsEnabledCheckbox.checked ? 'block' : 'none';
+    }
+    
+    // WAF Bypass mode handling
+    if (wafEvasionCheckbox && wafOptionsDiv) {
+        // Show/hide WAF options based on checkbox state
+        wafEvasionCheckbox.addEventListener('change', function() {
+            wafOptionsDiv.style.display = this.checked ? 'block' : 'none';
+            
+            // Auto-check related options when WAF bypass is enabled
+            if (this.checked) {
+                if (randomizeHeadersCheckbox) randomizeHeadersCheckbox.checked = true;
+                if (rotateUserAgentCheckbox) rotateUserAgentCheckbox.checked = true;
+                
+                // Auto-expand advanced options when WAF bypass is enabled
+                if (advancedOptionsCollapse && !advancedOptionsCollapse.classList.contains('show') && advancedCollapse) {
+                    advancedCollapse.show();
+                    if (chevronIcon) {
+                        chevronIcon.classList.remove('bi-chevron-down');
+                        chevronIcon.classList.add('bi-chevron-up');
+                    }
+                }
+            }
+        });
+        
+        // Initialize WAF options visibility
+        wafOptionsDiv.style.display = wafEvasionCheckbox.checked ? 'block' : 'none';
+    }
+    
     // Add event listeners for scanner checkboxes
     if (allScannersCheckbox) {
         allScannersCheckbox.addEventListener('change', handleAllScannersCheckbox);
@@ -327,309 +410,301 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Update scan form submission
+    // Handle form submission
     if (scanFormElement) {
         scanFormElement.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get all selected scanners
-            const selectedScanners = [];
-            document.querySelectorAll('.scanner-checkbox').forEach(checkbox => {
-                if (checkbox.checked) {
-                    selectedScanners.push(checkbox.id.replace('Scanner', ''));
-                }
-            });
+            // Get form values
+            const targetUrl = document.getElementById('targetUrl').value;
+            const maxPages = document.getElementById('maxPages').value;
+            const delay = document.getElementById('delay').value;
+            const userAgent = document.getElementById('userAgent').value;
             
-            // Validate at least one scanner is selected
-            if (selectedScanners.length === 0) {
-                updateTerminal('Error: Please select at least one scanner', 'error');
+            // Get JavaScript rendering options
+            const jsEnabled = document.getElementById('jsEnabled')?.checked || false;
+            const browserTimeout = jsEnabled ? parseInt(document.getElementById('browserTimeout')?.value || 30000) : 30000;
+            const waitForIdle = jsEnabled ? document.getElementById('waitForIdle')?.checked || true : true;
+            
+            // Get WAF evasion and session management options
+            const wafEvasion = document.getElementById('wafEvasion')?.checked || false;
+            const rotateUserAgent = document.getElementById('rotateUserAgent')?.checked || false;
+            const randomizeHeaders = document.getElementById('randomizeHeaders')?.checked || false;
+            const maintainSession = document.getElementById('maintainSession')?.checked || true;
+            const handleCsrf = document.getElementById('handleCsrf')?.checked || true;
+            
+            // Validate User-Agent
+            if (!validateUserAgent(userAgent)) {
                 return;
             }
-        
-            const formData = {
-                target_url: document.getElementById('targetUrl').value,
-                scanners: selectedScanners,
-                max_pages: document.getElementById('maxPages').value,
-                delay: document.getElementById('delay').value,
-                user_agent: document.getElementById('userAgent').value || undefined
-            };
+            
+            // Get selected scanners
+            const selectedScanners = [];
+            document.querySelectorAll('.scanner-checkbox:checked').forEach(checkbox => {
+                selectedScanners.push(checkbox.id.replace('Scanner', ''));
+            });
+            
+            // Show results card
+            resultsCard.style.display = 'block';
+            
+            // Clear previous results
+            scanStats.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Scanning ${targetUrl}${jsEnabled ? ' with JavaScript rendering' : ''}...</span>
+                    </div>
+                </div>
+            `;
+            vulnerabilities.innerHTML = '';
             
             try {
-                updateTerminal('Starting scan...', 'info');
-                updateTerminal(`Target: ${formData.target_url}`, 'info');
-                updateTerminal(`Selected scanners: ${formData.scanners.join(', ')}`, 'info');
-                
-                const response = await fetch('/scan', {
+                // Make API request
+                const response = await fetch(`${API_URL}/scan`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-API-Key': API_KEY
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({
+                        target_url: targetUrl,
+                        scanners: selectedScanners,
+                        max_pages: parseInt(maxPages),
+                        delay: parseFloat(delay),
+                        user_agent: userAgent || undefined,
+                        js_enabled: jsEnabled,
+                        browser_timeout: browserTimeout,
+                        wait_for_idle: waitForIdle,
+                        waf_evasion: wafEvasion,
+                        rotate_user_agent: rotateUserAgent,
+                        randomize_headers: randomizeHeaders,
+                        maintain_session: maintainSession,
+                        handle_csrf: handleCsrf
+                    })
                 });
-                
+
                 if (!response.ok) {
-                    if (response.status === 403) {
-                        localStorage.removeItem('secscan_api_key');
-                        throw new Error('Invalid API key. Please refresh the page and enter a valid API key.');
-                    }
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Scan failed');
+                if (response.status === 403) {
+                    localStorage.removeItem('secscan_api_key');
+                    throw new Error('Invalid API key. Please refresh the page and enter a valid API key.');
                 }
-                
-                const result = await response.json();
-                updateTerminal('Scan completed successfully', 'info');
-                displayResults(result);
-                
-            } catch (error) {
-                updateTerminal(`Error: ${error.message}`, 'error');
+                const error = await response.json();
+                throw new Error(error.detail || 'Scan failed');
             }
-        });
-    }
 
-    // Display results
-    async function displayResults(result) {
-        // Clear previous results
-        if (scanStats) scanStats.innerHTML = '';
-        if (vulnerabilities) vulnerabilities.innerHTML = '';
-        if (resultsCard) resultsCard.style.display = 'block';
+            const result = await response.json();
+            updateTerminal('Scan completed successfully', 'info');
+            displayResults(result);
 
-        // Display statistics
-        const stats = result.stats || {};
-        if (scanStats) {
-            scanStats.innerHTML = `
-                <div class="alert alert-info">
-                    <h5><i class="bi bi-graph-up me-2"></i>Scan Statistics</h5>
-                    <ul class="mb-0">
-                        <li>Pages crawled: ${stats.pages_crawled || 0}</li>
-                        <li>Links found: ${stats.links_found || 0}</li>
-                        <li>Forms found: ${stats.forms_found || 0}</li>
-                    </ul>
+        } catch (error) {
+            updateTerminal(`Error: ${error.message}`, 'error');
+        }
+    });
+}
+
+// Display results
+async function displayResults(result) {
+    // Clear previous results
+    if (scanStats) scanStats.innerHTML = '';
+    if (vulnerabilities) vulnerabilities.innerHTML = '';
+    if (resultsCard) resultsCard.style.display = 'block';
+
+    // Display statistics
+    const stats = result.stats || {};
+    if (scanStats) {
+        let statsHtml = `
+            <div class="alert alert-success">
+                <h5><i class="bi bi-check-circle me-2"></i>Scan Completed</h5>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <div class="stat-card-content">
+                                <div class="stat-card-value">${result.stats.pages_crawled}</div>
+                                <div class="stat-card-label">Pages Crawled</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon">
+                                <i class="bi bi-link-45deg"></i>
+                            </div>
+                            <div class="stat-card-content">
+                                <div class="stat-card-value">${result.stats.links_found}</div>
+                                <div class="stat-card-label">Links Found</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon">
+                                <i class="bi bi-ui-checks"></i>
+                            </div>
+                            <div class="stat-card-content">
+                                <div class="stat-card-value">${result.stats.forms_found}</div>
+                                <div class="stat-card-label">Forms Found</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-card-icon">
+                                <i class="bi bi-browser-chrome"></i>
+                            </div>
+                            <div class="stat-card-content">
+                                <div class="stat-card-value">${result.stats.js_enabled ? 'Enabled' : 'Disabled'}</div>
+                                <div class="stat-card-label">JS Rendering</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Display form analysis if JavaScript rendering was enabled
+        if (result.form_analysis && result.form_analysis.length > 0) {
+            statsHtml += `
+                <div class="alert alert-info mt-3">
+                    <h5><i class="bi bi-info-circle me-2"></i>JavaScript Form Analysis</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Page URL</th>
+                                    <th>Form Identifier</th>
+                                    <th>Submission Type</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.form_analysis.map(form => `
+                                    <tr>
+                                        <td class="text-truncate" style="max-width: 200px;" title="${form.url}">${form.url}</td>
+                                        <td>${form.form_id || form.form_class || 'Unknown'}</td>
+                                        <td>
+                                            <span class="badge ${form.submission_type === 'javascript' ? 'bg-warning' : 'bg-secondary'}">
+                                                ${form.submission_type}
+                                            </span>
+                                        </td>
+                                        <td class="text-truncate" style="max-width: 150px;" title="${form.action}">${form.action}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
         }
 
-        // Display vulnerabilities with recommendations
+        scanStats.innerHTML = statsHtml;
+    }
+
+    // Display vulnerabilities
+    if (vulnerabilities) {
         const vulns = result.vulnerabilities || [];
-        if (vulnerabilities) {
-            if (vulns.length > 0) {
-                updateTerminal('Analyzing vulnerabilities with AI...', 'info');
-                
-                // Get AI analysis for vulnerabilities
-                let aiResults = [];
-                try {
-                    const response = await fetch(`${API_URL}/ai-analyze`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-Key': API_KEY
-                        },
-                        body: JSON.stringify({ vulnerabilities: vulns })
-                    });
-                    
-                    if (response.ok) {
-                        const results = await response.json();
-                        aiResults = results.ai_results || [];
-                        updateTerminal('AI analysis completed successfully', 'info');
-                    } else {
-                        updateTerminal(`AI analysis failed: ${response.statusText}`, 'warning');
-                    }
-                } catch (error) {
-                    console.error('AI analysis error:', error);
-                    updateTerminal(`AI analysis error: ${error.message}`, 'warning');
-                }
-                
-                vulnerabilities.innerHTML = `
-                    <h5 class="mb-3"><i class="bi bi-shield-exclamation me-2"></i>Found ${vulns.length} Vulnerabilities</h5>
-                    ${vulns.map((vuln, index) => {
-                        // Find matching AI analysis if available
-                        const aiAnalysis = aiResults.find(r => r.vulnerability_type === vuln.type) || null;
-                        
-                        return `
-                        <div class="vulnerability-item ${vuln.severity}">
-                            <h6>
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                ${vuln.type.toUpperCase()} at ${vuln.url}
-                            </h6>
-                            <div class="vulnerability-details">
-                                <p><strong>Parameter:</strong> ${vuln.param || 'N/A'}</p>
-                                <p><strong>Payload:</strong> ${vuln.payload || 'N/A'}</p>
-                                <p><strong>Evidence:</strong> ${vuln.evidence || 'N/A'}</p>
-                                <p><strong>Severity:</strong> <span class="severity">${vuln.severity}</span></p>
-                                <p><strong>Prevention Score:</strong> ${(vuln.prevention_score * 100).toFixed(1)}%</p>
-                                <p><strong>Confidence:</strong> ${(vuln.confidence * 100).toFixed(1)}%</p>
-                            </div>
-                            
-                            ${aiAnalysis ? `
-                            <div class="ai-explanation mt-3 bg-dark text-light p-3 rounded">
-                                <h6 class="text-light"><i class="bi bi-cpu me-2"></i>AI Analysis</h6>
-                                <p class="text-light">${aiAnalysis.explanation}</p>
-                                <p><strong>Risk Level:</strong> <span class="badge bg-${aiAnalysis.risk_level === 'high' ? 'danger' : (aiAnalysis.risk_level === 'medium' ? 'warning' : 'info')}">${aiAnalysis.risk_level.toUpperCase()}</span></p>
-                                <p><strong>AI Confidence:</strong> ${(aiAnalysis.confidence * 100).toFixed(1)}%</p>
-                            </div>
-                            ` : ''}
-                            
-                            <div class="recommendations mt-3">
-                                <h6><i class="bi bi-cpu me-2"></i>AI Recommendations</h6>
-                                <ul class="list-group list-group-flush bg-dark">
-                                    ${aiAnalysis ? aiAnalysis.recommendations.map(rec => `
-                                        <li class="list-group-item bg-dark text-light border-secondary">
-                                            <i class="bi bi-cpu me-2 text-info"></i>${rec}
-                                        </li>
-                                    `).join('') : `
-                                        <li class="list-group-item bg-dark text-light border-secondary">
-                                            <i class="bi bi-info-circle me-2 text-warning"></i>AI analysis not available for this vulnerability type
-                                        </li>
-                                    `}
-                                </ul>
-                            </div>
+        if (vulns.length > 0) {
+            vulnerabilities.innerHTML = `
+                <h5 class="mb-3"><i class="bi bi-shield-exclamation me-2"></i>Found ${vulns.length} Vulnerabilities</h5>
+                ${vulns.map((vuln, index) => {
+                    return `
+                    <div class="vulnerability-item ${vuln.severity}">
+                        <h6>
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            ${vuln.type.toUpperCase()} at ${vuln.url}
+                        </h6>
+                        <div class="vulnerability-details">
+                            <p><strong>Parameter:</strong> ${vuln.param || 'N/A'}</p>
+                            <p><strong>Payload:</strong> ${vuln.payload || 'N/A'}</p>
+                            <p><strong>Evidence:</strong> ${vuln.evidence || 'N/A'}</p>
+                            <p><strong>Severity:</strong> <span class="severity">${vuln.severity}</span></p>
                         </div>
-                    `}).join('')}
-                `;
-            } else {
-                vulnerabilities.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle me-2"></i>No vulnerabilities found
                     </div>
-                `;
-            }
+                `}).join('')}
+            `;
+        } else {
+            vulnerabilities.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle me-2"></i>No vulnerabilities found
+                </div>
+            `;
         }
     }
+}
 
-    // Add function to get preventive measures
-    async function getPreventiveMeasures(codeContext) {
+// Add test functionality
+if (testButton) {
+    testButton.addEventListener('click', async () => {
         try {
-            const response = await fetch(`${API_URL}/preventive-measures`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': API_KEY
+            // Clear previous results
+            clearResults();
+
+            // Update terminal with test scan messages
+            updateTerminal('Starting test scan...', 'info');
+            updateTerminal('Target: https://example.com', 'info');
+            updateTerminal('Selected scanners: xss, sqli, ssrf, csrf, ssti, cmdInjection, pathTraversal, xxe', 'info');
+
+            // Simulate crawling with proper message format
+            updateTerminal('Crawling completed. Found 5 pages in 2.5 seconds', 'info');
+            updateTerminal('Running XSS scanner on https://example.com/search', 'info');
+            updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
+
+            // Create sample vulnerabilities
+            const sampleResult = {
+                scan_id: 'test_scan_123',
+                stats: {
+                    pages_crawled: 5,
+                    links_found: 15,
+                    forms_found: 3,
+                    js_enabled: true
                 },
-                body: JSON.stringify({ code_context: codeContext })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.measures;
-        } catch (error) {
-            console.error('Error getting preventive measures:', error);
-            return [];
-        }
-    }
-
-    // Add function to display preventive measures
-    function displayPreventiveMeasures(measures) {
-        if (!vulnerabilities) return;
-        
-        const preventiveMeasuresDiv = document.createElement('div');
-        preventiveMeasuresDiv.className = 'preventive-measures mt-4';
-        preventiveMeasuresDiv.innerHTML = `
-            <h5><i class="bi bi-shield-check me-2"></i>Preventive Measures</h5>
-            <ul class="list-group list-group-flush">
-                ${measures.map(measure => `
-                    <li class="list-group-item">
-                        <i class="bi bi-check-circle me-2"></i>${measure}
-                    </li>
-                `).join('')}
-            </ul>
-        `;
-        vulnerabilities.appendChild(preventiveMeasuresDiv);
-    }
-
-    // Add test functionality
-    if (testButton) {
-        testButton.addEventListener('click', async () => {
-            try {
-                // Clear previous results
-                clearResults();
-                
-                // Update terminal with test scan messages
-                updateTerminal('Starting test scan...', 'info');
-                updateTerminal('Target: https://example.com', 'info');
-                updateTerminal('Selected scanners: xss, sqli, ssrf, csrf, ssti, cmdInjection, pathTraversal, xxe', 'info');
-                
-                // Simulate crawling with proper message format
-                updateTerminal('Crawling completed. Found 5 pages in 2.5 seconds', 'info');
-                updateTerminal('Running XSS scanner on https://example.com/search', 'info');
-                updateTerminal('Running SQLI scanner on https://example.com/login', 'info');
-                updateTerminal('Running SSRF scanner on https://example.com/fetch', 'info');
-                updateTerminal('Running SSTI scanner on https://example.com/template', 'info');
-                updateTerminal('Running Command Injection scanner on https://example.com/exec', 'info');
-                updateTerminal('Running CSRF scanner on https://example.com/profile', 'info');
-                
-                // Create sample vulnerabilities
-                const sampleResult = {
-                    scan_id: 'test_scan_123',
-                    target_url: 'https://example.com',
-                    scan_type: 'custom',
-                    timestamp: new Date().toISOString(),
-                    elapsed_time: 2.5,
-                    stats: {
-                        pages_crawled: 5,
-                        links_found: 15,
-                        forms_found: 3
+                form_analysis: [
+                    {
+                        url: 'https://example.com/login',
+                        form_id: 'loginForm',
+                        submission_type: 'javascript',
+                        action: 'JavaScript event handler'
                     },
-                    vulnerabilities: [
-                        {
-                            type: 'SQL Injection',
-                            url: 'https://example.com/login',
-                            payload: "' OR '1'='1",
-                            evidence: 'SQL error detected: MySQL server version for the right syntax',
-                            severity: 'critical',
-                            param: 'username',
-                            method: 'POST',
-                            recommendations: [
-                                'Use parameterized queries or prepared statements',
-                                'Implement input validation',
-                                'Use ORM frameworks',
-                                'Apply the principle of least privilege'
-                            ],
-                            prevention_score: 0.95,
-                            confidence: 0.98
-                        },
-                        {
-                            type: 'Cross-Site Scripting (XSS)',
-                            url: 'https://example.com/search',
-                            payload: '<script>alert("XSS")</script>',
-                            evidence: 'Payload was reflected in the response',
-                            severity: 'high',
-                            param: 'q',
-                            method: 'GET',
-                            recommendations: [
-                                'Implement Content-Security-Policy (CSP)',
-                                'Use context-aware output encoding',
-                                'Sanitize user input',
-                                'Use modern frameworks with built-in XSS protection'
-                            ],
-                            prevention_score: 0.85,
-                            confidence: 0.92
-                        }
-                    ],
-                    security_recommendations: [
-                        'Missing X-Frame-Options header - Consider adding to prevent clickjacking',
-                        'Missing X-Content-Type-Options header - Consider adding "nosniff"',
-                        'Missing Content-Security-Policy header - Consider implementing CSP',
-                        'Missing Strict-Transport-Security header - Consider adding HSTS'
-                    ]
-                };
+                    {
+                        url: 'https://example.com/contact',
+                        form_id: 'contactForm',
+                        submission_type: 'unknown',
+                        action: ''
+                    }
+                ],
+                vulnerabilities: [
+                    {
+                        type: 'SQL Injection',
+                        url: 'https://example.com/login',
+                        payload: "' OR '1'='1",
+                        evidence: 'SQL error detected: MySQL server version for the right syntax',
+                        severity: 'critical',
+                        param: 'username',
+                        method: 'POST'
+                    },
+                    {
+                        type: 'Cross-Site Scripting (XSS)',
+                        url: 'https://example.com/search',
+                        payload: '<script>alert("XSS")</script>',
+                        evidence: 'Payload was reflected in the response',
+                        severity: 'high',
+                        param: 'q',
+                        method: 'GET'
+                    }
+                ]
+            };
 
-                // Display results
-                updateTerminal('Scan completed successfully', 'info');
-                displayResults(sampleResult);
-                
-            } catch (error) {
-                console.error('Test scan error:', error);
-                updateTerminal(`Error: ${error.message}`, 'error');
-            }
-        });
-    }
+            // Display results
+            updateTerminal('Scan completed successfully', 'info');
+            displayResults(sampleResult);
 
-    // AI analysis is now automatically integrated into the vulnerability display
-    // No separate AI Analyze button needed
-
-    // AI analysis is now automatically integrated into the vulnerability display
-    // No separate modal needed for AI results
+        } catch (error) {
+            updateTerminal(`Test error: ${error.message}`, 'error');
+        }
+    });
+}
 });

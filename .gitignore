@@ -50,4 +50,15 @@ client/dist/
 
 # OS specific
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Playwright
+.playwright-browsers/
+.playwright-cache/
+playwright-report/
+test-results/
+screenshots/
+
+# Browser data
+.browser_data/
+.cache/

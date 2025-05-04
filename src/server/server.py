@@ -89,6 +89,14 @@ class ScanRequest(BaseModel):
     delay: float = 1.0
     max_pages: int = 20
     user_agent: Optional[str] = None
+    js_enabled: bool = False
+    browser_timeout: int = 30000
+    wait_for_idle: bool = True
+    waf_evasion: bool = False
+    rotate_user_agent: bool = False
+    randomize_headers: bool = False
+    maintain_session: bool = True
+    handle_csrf: bool = True
 
 class ScanResult(BaseModel):
     scan_id: str

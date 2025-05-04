@@ -250,6 +250,92 @@ body {
     height: 8px;
 }
 
+/* Advanced Options Styles */
+.advanced-options-header {
+    padding: 10px 15px;
+    background-color: var(--card-bg);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color);
+}
+
+.advanced-options-header:hover {
+    background-color: var(--hover-color);
+}
+
+.advanced-options-header .bi-gear-fill {
+    font-size: 1.1rem;
+}
+
+.advanced-options-header .bi-chevron-down,
+.advanced-options-header .bi-chevron-up {
+    transition: transform 0.2s ease;
+}
+
+#advancedOptionsCollapse {
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    background-color: var(--card-bg);
+}
+
+/* JavaScript Rendering Styles */
+.bi-browser-chrome {
+    color: var(--info-color);
+}
+
+/* WAF Bypass Styles */
+.bi-shield-lock {
+    color: var(--warning-color);
+}
+
+.waf-switch:checked {
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+}
+
+.waf-switch:checked + .form-check-label {
+    color: var(--warning-color);
+}
+
+/* Form Control Styles in Advanced Options */
+#advancedOptionsCollapse .form-control-sm,
+#advancedOptionsCollapse .form-select-sm {
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.2rem;
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-primary);
+}
+
+/* Fix switch positioning */
+.form-check-input {
+    margin-top: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.form-switch .form-check-input {
+    width: 2.5em;
+}
+
+/* Ensure proper spacing in option rows */
+.d-flex.justify-content-between {
+    gap: 10px;
+}
+
+/* Make sure text doesn't wrap under switches */
+.d-flex.justify-content-between span {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 ::-webkit-scrollbar-track {
     background: rgba(255,255,255,0.1);
     border-radius: 4px;
@@ -371,8 +457,10 @@ body {
     overflow-y: auto;
     padding: 8px;
     max-height: calc(100% - 40px);
+    min-height: 700px;
     scrollbar-width: thin;
     overflow-x: hidden;
+    font-family: 'Consolas', 'Monaco', monospace;
 }
 
 .terminal-line {
@@ -458,8 +546,8 @@ body {
 #configCard, #terminalCard {
     position: relative;
     height: 100%;
-    max-height: 800px;
-    min-height: 700px;
+    max-height: 900px;
+    min-height: 800px;
     display: flex;
     flex-direction: column;
     margin-bottom: 1rem;
@@ -477,7 +565,8 @@ body {
     padding: 1.25rem;
     position: relative;
     flex: 1;
-    overflow: visible;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 #terminal {

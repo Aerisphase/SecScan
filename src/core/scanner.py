@@ -4,6 +4,9 @@ import argparse
 import logging
 from typing import Dict, Optional, List
 from .crawler import AdvancedCrawler
+from .js_crawler import JSCrawler
+from .http_client import HttpClient
+from .enhanced_http_client import EnhancedHttpClient
 from .scanners import SQLiScanner, XSSScanner, SSRFScanner, CSRFScanner, SSTIScanner, CommandInjectionScanner, XXEScanner, PathTraversalScanner
 
 # Set up encoding for Windows
@@ -41,6 +44,18 @@ def parse_args():
     parser.add_argument('--auth', help='Basic auth credentials (user:pass)')
     parser.add_argument('--max-retries', type=int, default=3,
                       help='Maximum number of retries for failed requests')
+    parser.add_argument('--js-enabled', action='store_true',
+                      help='Enable JavaScript rendering for crawling')
+    parser.add_argument('--waf-evasion', action='store_true',
+                      help='Enable WAF evasion techniques')
+    parser.add_argument('--rotate-user-agent', action='store_true',
+                      help='Rotate user agents to avoid detection')
+    parser.add_argument('--randomize-headers', action='store_true',
+                      help='Randomize HTTP headers to avoid detection')
+    parser.add_argument('--maintain-session', action='store_true',
+                      help='Maintain session cookies across requests')
+    parser.add_argument('--handle-csrf', action='store_true',
+                      help='Automatically handle CSRF tokens in forms')
     return parser.parse_args()
 
 def analyze_security_headers(headers: Dict[str, str]) -> List[str]:
@@ -86,12 +101,68 @@ class Scanner:
                 'verify_ssl': bool(self.config.get('verify_ssl', True)),
                 'proxy': self.config.get('proxy'),
                 'auth': self.config.get('auth'),
-                'max_retries': int(self.config.get('max_retries', 3))
+                'max_retries': int(self.config.get('max_retries', 3)),
+                'js_enabled': bool(self.config.get('js_enabled', False)),
+                'waf_evasion': bool(self.config.get('waf_evasion', False)),
+                'rotate_user_agent': bool(self.config.get('rotate_user_agent', False)),
+                'randomize_headers': bool(self.config.get('randomize_headers', False)),
+                'maintain_session': bool(self.config.get('maintain_session', True)),
+                'handle_csrf': bool(self.config.get('handle_csrf', True))
             }
 
             self.logger.debug(f"Using config: {validated_config}")
-            crawler = AdvancedCrawler(target_url, validated_config)
-            crawl_data = crawler.crawl()
+            
+            # Create HTTP client based on configuration
+            if validated_config.get('waf_evasion', False) or validated_config.get('rotate_user_agent', False) or \
+               validated_config.get('maintain_session', True) or validated_config.get('handle_csrf', True):
+                self.logger.info("Using enhanced HTTP client with WAF evasion and session management")
+                http_client = EnhancedHttpClient(
+                    verify_ssl=validated_config.get('verify_ssl', True),
+                    timeout=10,
+                    max_retries=validated_config.get('max_retries', 3),
+                    rate_limit_min=validated_config.get('delay', 1.0),
+                    rate_limit_max=validated_config.get('delay', 1.0) * 2,
+                    proxy=validated_config.get('proxy'),
+                    auth=validated_config.get('auth'),
+                    rotate_user_agent=validated_config.get('rotate_user_agent', False),
+                    rotate_request_pattern=validated_config.get('randomize_headers', False) or validated_config.get('waf_evasion', False),
+                    waf_evasion=validated_config.get('waf_evasion', False),
+                    handle_csrf=validated_config.get('handle_csrf', True),
+                    maintain_session=validated_config.get('maintain_session', True)
+                )
+                
+                if validated_config.get('user_agent'):
+                    http_client.session.headers['User-Agent'] = validated_config.get('user_agent')
+            else:
+                self.logger.info("Using standard HTTP client")
+                http_client = HttpClient(
+                    verify_ssl=validated_config.get('verify_ssl', True),
+                    timeout=10,
+                    max_retries=validated_config.get('max_retries', 3),
+                    rate_limit=validated_config.get('delay', 1.0),
+                    proxy=validated_config.get('proxy'),
+                    auth=validated_config.get('auth')
+                )
+                
+                if validated_config.get('user_agent'):
+                    http_client.session.headers['User-Agent'] = validated_config.get('user_agent')
+            
+            # Use JSCrawler if JavaScript is enabled, otherwise use AdvancedCrawler
+            if validated_config.get('js_enabled', False):
+                self.logger.info("Using JavaScript-enabled crawler")
+                async def run_js_crawler():
+                    async with JSCrawler(target_url, validated_config) as crawler:
+                        return await crawler.crawl()
+                        
+                import asyncio
+                crawl_data = asyncio.run(run_js_crawler())
+            else:
+                self.logger.info("Using standard crawler")
+                # Pass the HTTP client to the crawler
+                crawler = AdvancedCrawler(target_url, validated_config)
+                crawler.client = http_client
+                crawl_data = crawler.crawl()
+            # Crawl data is already obtained above
             
             if not crawl_data:
                 self.logger.error("No data collected during crawling")
@@ -100,30 +171,73 @@ class Scanner:
             # Analyze security headers
             security_recommendations = analyze_security_headers(crawl_data.get('security_headers', {}))
 
-            # Initialize scanners
+            # Initialize scanners with the HTTP client
             scanners = {
-                'xss': XSSScanner(crawler.client),
-                'sqli': SQLiScanner(crawler.client),
-                'ssrf': SSRFScanner(crawler.client)
+                'xss': XSSScanner(http_client),
+                'sqli': SQLiScanner(http_client),
+                'ssrf': SSRFScanner(http_client)
             }
+            
+            # Add additional scanners if configured
+            if validated_config.get('scan_type', 'fast') == 'full':
+                scanners.update({
+                    'csrf': CSRFScanner(http_client),
+                    'ssti': SSTIScanner(http_client),
+                    'cmdInjection': CommandInjectionScanner(http_client),
+                    'xxe': XXEScanner(http_client),
+                    'pathTraversal': PathTraversalScanner(http_client)
+                })
 
             # Collect vulnerabilities
             vulnerabilities = []
+            
+            # Extract forms from crawl data
+            forms = []
+            if validated_config.get('js_enabled', False):
+                # For JSCrawler, forms are in the pages array
+                for page in crawl_data.get('pages', []):
+                    page_forms = page.get('forms', [])
+                    # Add page URL to each form for context
+                    for form in page_forms:
+                        form['page_url'] = page.get('url', '')
+                    forms.extend(page_forms)
+            else:
+                # For AdvancedCrawler, forms are directly in crawl_data
+                forms = crawl_data.get('forms', [])
+            
             for scanner_name, scanner in scanners.items():
                 try:
                     self.logger.info(f"Running {scanner_name.upper()} scanner...")
-                    vulns = scanner.scan(target_url, crawl_data.get('forms', []))
+                    vulns = scanner.scan(target_url, forms)
                     if vulns:
                         vulnerabilities.extend(vulns)
                 except Exception as e:
                     self.logger.error(f"{scanner_name} scanner failed: {str(e)}")
 
+            # Get form analysis for JavaScript-rendered forms
+            form_analysis = []
+            if validated_config.get('js_enabled', False):
+                for page in crawl_data.get('pages', []):
+                    for form in page.get('forms', []):
+                        if form.get('has_submit_handler', False) or not form.get('action'):
+                            form_analysis.append({
+                                'url': page.get('url', ''),
+                                'form_id': form.get('form_id', ''),
+                                'form_class': form.get('form_class', ''),
+                                'submission_type': 'javascript' if form.get('has_submit_handler') else 'unknown',
+                                'action': form.get('action', 'JavaScript event handler')
+                            })
+
             return {
                 'stats': {
-                    'pages_crawled': crawl_data.get('pages_crawled', 0),
-                    'links_found': crawl_data.get('links_found', 0),
-                    'forms_found': crawl_data.get('forms_found', 0)
+                    'pages_crawled': crawl_data.get('pages_crawled', 0) if not validated_config.get('js_enabled', False) 
+                                   else len(crawl_data.get('pages', [])),
+                    'links_found': crawl_data.get('links_found', 0) if not validated_config.get('js_enabled', False)
+                                 else crawl_data.get('links_found', 0),
+                    'forms_found': len(forms),
+                    'js_enabled': validated_config.get('js_enabled', False)
                 },
+                'form_analysis': form_analysis,
                 'vulnerabilities': vulnerabilities,
                 'security_recommendations': security_recommendations,
                 'security_headers': crawl_data.get('security_headers', {})
@@ -233,6 +347,7 @@ def main():
         logger.info(f"Starting scan for {args.target} (mode: {args.scan_type})")
         
         config = {
+            'target_url': args.target,
             'scan_type': args.scan_type,
             'delay': args.delay,
             'max_pages': args.max_pages,
@@ -240,7 +355,12 @@ def main():
             'verify_ssl': args.verify_ssl,
             'proxy': args.proxy,
             'auth': args.auth,
-            'max_retries': args.max_retries
+            'max_retries': args.max_retries,
+            'js_enabled': args.js_enabled,
+            'waf_evasion': args.waf_evasion,
+            'rotate_user_agent': args.rotate_user_agent,
+            'maintain_session': args.maintain_session,
+            'handle_csrf': args.handle_csrf
         }
 
         scanner = Scanner(config)

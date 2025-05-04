@@ -115,34 +115,92 @@ class AdvancedCrawler:
         if url in self.visited_urls:
             return
             
+        # Check if this is a known problematic site
+        is_juice_shop = 'juice-shop' in url.lower() or 'herokuapp.com' in url.lower()
+        max_retries = 3 if is_juice_shop else 1
+        retry_delay = 2.0 if is_juice_shop else self.delay
+        
         async with self.semaphore:  # Limit concurrent requests
             self.visited_urls.add(url)
             
-            try:
-                async with self.session.get(url) as response:
-                    if response.status == 200:
-                        content = await response.text()
-                        soup = BeautifulSoup(content, 'html.parser')
-                        
-                        # Extract page data
-                        page_data = {
-                            'url': url,
-                            'title': soup.title.string if soup.title else '',
-                            'forms': self._extract_forms(soup),
-                            'links': self._extract_links(soup, url),
-                            'content': content
+            success = False
+            for attempt in range(max_retries):
+                try:
+                    # Add special headers for Juice Shop to avoid detection
+                    headers = {}
+                    if is_juice_shop:
+                        headers = {
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.5',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Cache-Control': 'max-age=0'
                         }
-                        
-                        self.pages.append(page_data)
-                        logger.info(f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})")
-                        
-                        # Add discovered links to queue
-                        for link in page_data['links']:
-                            if len(self.visited_urls) < self.max_pages and link not in self.visited_urls:
-                                await self.queue.put(link)
-                                
-            except Exception as e:
-                logger.error(f"Error crawling {url}: {str(e)}")
+                    
+                    async with self.session.get(url, headers=headers if headers else None, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                        if response.status == 200:
+                            content = await response.text()
+                            soup = BeautifulSoup(content, 'html.parser')
+                            
+                            # Extract page data
+                            page_data = {
+                                'url': url,
+                                'title': soup.title.string if soup.title else '',
+                                'forms': self._extract_forms(soup),
+                                'links': self._extract_links(soup, url),
+                                'content': content
+                            }
+                            
+                            self.pages.append(page_data)
+                            logger.info(f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})")
+                            
+                            # Add discovered links to queue
+                            for link in page_data['links']:
+                                if len(self.visited_urls) < self.max_pages and link not in self.visited_urls:
+                                    await self.queue.put(link)
+                            
+                            # Success, no need to retry
+                            success = True
+                            break
+                        elif response.status == 429:  # Too Many Requests
+                            logger.warning(f"Rate limited on {url}, attempt {attempt+1}/{max_retries}")
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                        else:
+                            logger.warning(f"Received status {response.status} for {url}, attempt {attempt+1}/{max_retries}")
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(retry_delay)
+                except aiohttp.ClientConnectorError as e:
+                    logger.error(f"Connection error while crawling {url}: {str(e)}")
+                    if attempt < max_retries - 1 and is_juice_shop:
+                        logger.info(f"Retrying {url}, attempt {attempt+1}/{max_retries}")
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    else:
+                        break
+                except aiohttp.ClientError as e:
+                    logger.error(f"Client error while crawling {url}: {str(e)}")
+                    if attempt < max_retries - 1 and is_juice_shop:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    else:
+                        break
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout while crawling {url}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    else:
+                        break
+                except ConnectionResetError as e:
+                    logger.error(f"Connection reset while crawling {url}: {str(e)}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay * (attempt + 1))
+                    else:
+                        break
+                except Exception as e:
+                    logger.error(f"Error crawling {url}: {str(e)}")
+                    break
+                    
+            # Add a delay after processing this URL regardless of success
+            await asyncio.sleep(self.delay)
                 
     def _extract_forms(self, soup: BeautifulSoup) -> List[Dict]:
         """Extract form data from the page"""
