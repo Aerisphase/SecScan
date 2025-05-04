@@ -79,33 +79,15 @@
 - Контекстный анализ (приоритезация рисков: платежи > блог)
 - Генерация payloads (автоподбор обходных техник для WAF)
 
-### 3.3 Roadmap
-SSRF (Server-Side Request Forgery)
+# Улучшенная обучалка
+python src/ai/training/enhanced_train.py
 
-XXE (XML External Entity)
+# Скипнуть стадии
+python src/ai/training/enhanced_train.py --skip-collection
+python src/ai/training/enhanced_train.py --skip-preprocessing
 
-IDOR (Insecure Direct Object References)
-
-File Upload Vulnerabilities
-
-Command Injection
-
-Path Traversal
-
-Broken Authentication
-
-Sensitive Data Exposure
-
-Security Misconfiguration
-
-Using Components with Known Vulnerabilities
-
-Insufficient Logging & Monitoring
-
-To train AI:
-
-python src/ai/training/train.py
-
+# Для кастомных датафайлов
+python src/ai/training/enhanced_train.py --data-file path/to/data.json
 
 
 
