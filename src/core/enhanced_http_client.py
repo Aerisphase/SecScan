@@ -144,6 +144,9 @@ class EnhancedHttpClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         
+        # Initialize headers attribute that scanners can access directly
+        self.headers = {}
+        
         # Set initial headers
         self._rotate_headers()
 
@@ -160,7 +163,7 @@ class EnhancedHttpClient:
             
         return [None]
 
-    def _rotate_headers(self) -> None:
+    def _rotate_headers(self):
         """Rotate headers to avoid pattern detection"""
         headers = {}
         
@@ -196,16 +199,18 @@ class EnhancedHttpClient:
                 cache_options = ['no-cache', 'max-age=0', 'no-store, max-age=0', 'no-transform']
                 headers['Cache-Control'] = random.choice(cache_options)
                 
-            # Add random custom headers occasionally
-            if random.random() > 0.8:
-                headers['X-Forwarded-For'] = f"{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}"
-                
-            # Add random DNT (Do Not Track) header
-            if random.random() > 0.7:
-                headers['DNT'] = '1' if random.random() > 0.5 else '0'
-                
-        # Update session headers
+        # Add random custom headers occasionally
+        if random.random() > 0.8:
+            headers['X-Forwarded-For'] = f"{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}.{random.randint(1, 255)}"
+            
+        # Add random DNT (Do Not Track) header
+        if random.random() > 0.7:
+            headers['DNT'] = '1'
+            
+        # Update both the session headers and the headers attribute
         self.session.headers.update(headers)
+        # Make a copy of the headers for scanners to access directly
+        self.headers = self.session.headers.copy()
 
     def _rate_limit(self) -> None:
         """Implement randomized rate limiting"""
@@ -579,6 +584,9 @@ class EnhancedHttpClient:
                 cookies=cookies
             )
             
+            # Update the headers attribute with the merged headers
+            self.headers = merged_headers.copy()
+            
             # Check for WAF
             waf = self._detect_waf(response)
             if waf:
@@ -632,6 +640,9 @@ class EnhancedHttpClient:
                 allow_redirects=allow_redirects,
                 cookies=cookies
             )
+            
+            # Update the headers attribute with the merged headers
+            self.headers = merged_headers.copy()
             
             # Check for WAF
             waf = self._detect_waf(response)

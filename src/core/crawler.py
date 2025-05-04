@@ -1,12 +1,12 @@
-import time
-import logging
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, parse_qs
-from typing import Dict, List, Set, Optional
-from .http_client import HttpClient
 import re
-import aiohttp
+import time
 import asyncio
+import logging
+import aiohttp
+from bs4 import BeautifulSoup
+from typing import Dict, List, Optional, Set, Union
+from urllib.parse import urljoin, urlparse, parse_qs
+from .http_client import HttpClient
 from datetime import datetime
 from asyncio import Semaphore
 
@@ -190,11 +190,72 @@ class AdvancedCrawler:
                                 soup = BeautifulSoup(content, 'html.parser')
                                 
                                 # Extract page data
+                                forms = self._extract_forms(soup)
+                                links = self._extract_links(soup, url)
+                                
+                                # Extract URL parameters for testing
+                                url_params = []
+                                parsed_url = urlparse(url)
+                                if parsed_url.query:
+                                    query_params = parse_qs(parsed_url.query)
+                                    for param, values in query_params.items():
+                                        url_params.append({
+                                            'name': param,
+                                            'value': values[0] if values else ''
+                                        })
+                                
+                                # Look for potential injection points in the HTML
+                                potential_injection_points = []
+                                
+                                # Check for reflected parameters
+                                for param in url_params:
+                                    param_name = param['name']
+                                    param_value = param['value']
+                                    if param_value and param_value in content:
+                                        potential_injection_points.append({
+                                            'type': 'reflected_parameter',
+                                            'name': param_name,
+                                            'value': param_value
+                                        })
+                                
+                                # Check for input fields that might be vulnerable
+                                for input_tag in soup.find_all('input'):
+                                    input_type = input_tag.get('type', '').lower()
+                                    input_name = input_tag.get('name', '')
+                                    if input_type in ['text', 'search', 'hidden'] and input_name:
+                                        potential_injection_points.append({
+                                            'type': 'input_field',
+                                            'name': input_name,
+                                            'element': str(input_tag)
+                                        })
+                                
+                                # Look for JavaScript event handlers
+                                for tag in soup.find_all(lambda tag: any(attr.startswith('on') for attr in tag.attrs)):
+                                    for attr, value in tag.attrs.items():
+                                        if attr.startswith('on'):
+                                            potential_injection_points.append({
+                                                'type': 'event_handler',
+                                                'event': attr,
+                                                'value': value,
+                                                'element': str(tag)
+                                            })
+                                
+                                # Look for inline JavaScript
+                                for script in soup.find_all('script'):
+                                    if script.string and len(script.string.strip()) > 0:
+                                        potential_injection_points.append({
+                                            'type': 'inline_script',
+                                            'content': script.string[:100] + '...' if len(script.string) > 100 else script.string
+                                        })
+                                
+                                # Create enhanced page data
                                 page_data = {
                                     'url': url,
                                     'title': soup.title.string if soup.title else '',
-                                    'forms': self._extract_forms(soup),
-                                    'links': self._extract_links(soup, url),
+                                    'forms': forms,
+                                    'links': links,
+                                    'url_params': url_params,
+                                    'potential_injection_points': potential_injection_points,
                                     'content': content
                                 }
                                 

@@ -5,12 +5,13 @@ import re
 from typing import List, Dict, Optional, Union
 import socket
 import ipaddress
+from .base_scanner import BaseScanner
 
 logger = logging.getLogger(__name__)
 
-class SSRFScanner:
+class SSRFScanner(BaseScanner):
     def __init__(self, client=None):
-        self.client = client if client else HttpClient()
+        super().__init__(client)
         
         # Payloads for SSRF testing
         self.payloads = [

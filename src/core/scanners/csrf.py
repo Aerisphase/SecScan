@@ -1,13 +1,15 @@
 import logging
-from typing import Dict, Optional, List, Union
+from typing import Dict, List, Optional
+from urllib.parse import urlparse
 from ..http_client import HttpClient
+from .base_scanner import BaseScanner
 import re
 
 logger = logging.getLogger(__name__)
 
-class CSRFScanner:
+class CSRFScanner(BaseScanner):
     def __init__(self, client=None):
-        self.client = client if client else HttpClient()
+        super().__init__(client)
         
     def scan(self, url: str, forms: Optional[List[Dict]] = None) -> List[Dict]:
         """

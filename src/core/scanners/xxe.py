@@ -3,12 +3,13 @@ from urllib.parse import urlparse, parse_qs
 from ..http_client import HttpClient
 import re
 from typing import List, Dict, Optional, Union
+from .base_scanner import BaseScanner
 
 logger = logging.getLogger(__name__)
 
-class XXEScanner:
+class XXEScanner(BaseScanner):
     def __init__(self, client=None):
-        self.client = client if client else HttpClient()
+        super().__init__(client)
         
         # XML payloads for XXE testing
         self.payloads = [

@@ -3,12 +3,13 @@ from urllib.parse import urlparse, parse_qs, quote
 from ..http_client import HttpClient
 import re
 from typing import List, Dict, Optional, Union
+from .base_scanner import BaseScanner
 
 logger = logging.getLogger(__name__)
 
-class SQLiScanner:
+class SQLiScanner(BaseScanner):
     def __init__(self, client=None):
-        self.client = client if client else HttpClient()
+        super().__init__(client)
         self.payloads = [
             "'",
             "' OR '1'='1",

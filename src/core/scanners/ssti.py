@@ -3,12 +3,13 @@ from urllib.parse import urlparse, parse_qs, quote
 from ..http_client import HttpClient
 import re
 from typing import List, Dict, Optional, Union
+from .base_scanner import BaseScanner
 
 logger = logging.getLogger(__name__)
 
-class SSTIScanner:
+class SSTIScanner(BaseScanner):
     def __init__(self, client=None):
-        self.client = client if client else HttpClient()
+        super().__init__(client)
         
         # Patterns to detect successful SSTI exploitation
         self.ssti_patterns = [
