@@ -272,7 +272,8 @@ async def start_scan(config: ScanRequest, api_key: str = Depends(get_api_key)):
             base_url=config.target_url,
             max_pages=max_pages,
             delay=config.delay,
-            user_agent=config.user_agent
+            user_agent=config.user_agent,
+            log_manager=log_manager  # Pass log_manager for real-time updates
         )
         
         scanner = Scanner()

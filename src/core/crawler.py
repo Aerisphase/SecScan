@@ -14,7 +14,9 @@ from asyncio import Semaphore
 logger = logging.getLogger('Crawler')
 
 class AdvancedCrawler:
-    def __init__(self, base_url: str, max_pages: int = 20, delay: float = 0.1, user_agent: Optional[str] = None):
+    """Advanced web crawler with JavaScript rendering support"""
+    
+    def __init__(self, base_url: str, max_pages: int = 20, delay: float = 0.1, user_agent: Optional[str] = None, log_manager=None):
         self.base_url = base_url
         self.max_pages = max_pages
         self.delay = delay
@@ -25,6 +27,7 @@ class AdvancedCrawler:
         self.connector = None
         self.semaphore = Semaphore(10)  # Limit concurrent requests
         self.queue = asyncio.Queue()  # Queue for URLs to process
+        self.log_manager = log_manager  # WebSocket log manager for real-time updates
         
         # Normalize the base URL to ensure it ends with a slash if it's a domain root
         parsed = urlparse(self.base_url)
@@ -196,7 +199,15 @@ class AdvancedCrawler:
                                 }
                                 
                                 self.pages.append(page_data)
-                                logger.info(f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})")
+                                progress_message = f"Processed page {url} ({len(self.visited_urls)}/{self.max_pages})"
+                                logger.info(progress_message)
+                
+                                # Broadcast progress to WebSocket if log_manager is available
+                                if self.log_manager:
+                                    try:
+                                        await self.log_manager.broadcast(f"[CRAWLER] {progress_message}")
+                                    except Exception as e:
+                                        logger.error(f"Failed to broadcast crawler progress: {str(e)}")
                                 
                                 # Add discovered links to queue
                                 for link in page_data['links']:
