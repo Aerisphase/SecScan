@@ -1,5 +1,6 @@
-# **SecScan**
-![image](https://github.com/user-attachments/assets/f7e1d2e5-d36e-40e1-9507-50b44c40b7fc)
+# **SecScan** - Автоматизированный сканер уязвимостей с элементами искусственного интеллекта (AI/ML)
+![image](https://github.com/user-attachments/assets/b9f86f65-86ad-4b98-8a48-c842cc7984b5)
+
 ![image](https://github.com/user-attachments/assets/2fb16fce-25b2-4bb6-8553-423561a3e9aa)
 
 
