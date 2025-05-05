@@ -103,6 +103,7 @@ class ScanRequest(BaseModel):
     randomize_headers: bool = False
     maintain_session: bool = True
     handle_csrf: bool = True
+    scan_type: str = "fast"  # 'fast' or 'full'
 
 class ScanResult(BaseModel):
     scan_id: str

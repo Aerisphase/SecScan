@@ -484,6 +484,31 @@ document.addEventListener('DOMContentLoaded', () => {
         wafOptionsDiv.style.display = wafEvasionCheckbox.checked ? 'block' : 'none';
     }
     
+    // Scan Type Switch handling
+    const scanTypeSwitch = document.getElementById('scanType');
+    const fastLabel = document.querySelector('.fast-label');
+    const thoroughLabel = document.querySelector('.thorough-label');
+    
+    if (scanTypeSwitch && fastLabel && thoroughLabel) {
+        scanTypeSwitch.addEventListener('change', function() {
+            if (this.checked) {
+                // Thorough mode
+                fastLabel.style.display = 'none';
+                thoroughLabel.style.display = 'inline';
+                updateTerminal('Scan type set to: Thorough (will scan all pages)', 'info');
+            } else {
+                // Fast mode
+                fastLabel.style.display = 'inline';
+                thoroughLabel.style.display = 'none';
+                updateTerminal('Scan type set to: Fast (will stop after finding 5 vulnerabilities)', 'info');
+            }
+        });
+        
+        // Initialize labels visibility
+        fastLabel.style.display = scanTypeSwitch.checked ? 'none' : 'inline';
+        thoroughLabel.style.display = scanTypeSwitch.checked ? 'inline' : 'none';
+    }
+    
     // Add event listeners for scanner checkboxes
     if (allScannersCheckbox) {
         allScannersCheckbox.addEventListener('change', handleAllScannersCheckbox);
@@ -569,7 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         rotate_user_agent: rotateUserAgent,
                         randomize_headers: randomizeHeaders,
                         maintain_session: maintainSession,
-                        handle_csrf: handleCsrf
+                        handle_csrf: handleCsrf,
+                        scan_type: document.getElementById('scanTypeFull')?.checked ? 'full' : 'fast'
                     })
                 });
 

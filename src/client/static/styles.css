@@ -143,6 +143,86 @@ option {
     color: var(--text-primary);
 }
 
+/* Scan Type Options Styling */
+.scan-type-container {
+    margin-bottom: 1.5rem;
+}
+
+.scan-type-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.scan-type-option {
+    margin: 0;
+    padding: 0;
+}
+
+.scan-type-option .form-check-input {
+    position: absolute;
+    opacity: 0;
+}
+
+.scan-type-label {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.scan-type-option .form-check-input:checked + .scan-type-label {
+    border-color: var(--primary-color);
+    background-color: rgba(74, 107, 255, 0.1);
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.scan-type-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.2);
+    margin-right: 1rem;
+}
+
+.scan-type-icon i {
+    font-size: 1.25rem;
+}
+
+.scan-type-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.scan-type-name {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.scan-type-desc {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+#scanTypeFast:checked ~ .scan-type-label .scan-type-icon i {
+    color: var(--warning-color);
+}
+
+#scanTypeFull:checked ~ .scan-type-label .scan-type-icon i {
+    color: var(--info-color);
+}
+
 .navbar {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     background: linear-gradient(135deg, var(--dark-color), #1a1a1a) !important;
@@ -1667,3 +1747,28 @@ option {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     margin-bottom: 1.5rem;
 } 
+
+/* Scan Type Switch */
+.scan-type-switch .form-check-input {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    width: 2.5rem;
+}
+
+.scan-type-switch .form-check-input:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.scan-type-switch .form-check-label {
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.scan-type-switch .fast-label {
+    color: var(--primary-color);
+}
+
+.scan-type-switch .thorough-label {
+    color: var(--success-color);
+}

@@ -45,47 +45,82 @@
                                         placeholder="https://example.com">
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="bi bi-shield-check me-1"></i>Select Scanners
-                                </label>
-                                <div class="scanner-checkboxes">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="allScanners" checked>
-                                        <label class="form-check-label fw-bold" for="allScanners">All Scanners</label>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="scan-type-container">
+                                        <label class="form-label fw-bold mb-2">
+                                            <i class="bi bi-speedometer2 me-1"></i>Scan Type
+                                        </label>
+                                        <div class="scan-type-options">
+                                            <div class="form-check scan-type-option">
+                                                <input class="form-check-input" type="radio" name="scanTypeRadio" id="scanTypeFast" value="fast" checked>
+                                                <label class="form-check-label scan-type-label" for="scanTypeFast">
+                                                    <div class="scan-type-icon">
+                                                        <i class="bi bi-lightning-fill text-warning"></i>
+                                                    </div>
+                                                    <div class="scan-type-info">
+                                                        <span class="scan-type-name">Fast</span>
+                                                        <span class="scan-type-desc">Quick scan with basic checks</span>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                            <div class="form-check scan-type-option">
+                                                <input class="form-check-input" type="radio" name="scanTypeRadio" id="scanTypeFull" value="full">
+                                                <label class="form-check-label scan-type-label" for="scanTypeFull">
+                                                    <div class="scan-type-icon">
+                                                        <i class="bi bi-shield-check text-info"></i>
+                                                    </div>
+                                                    <div class="scan-type-info">
+                                                        <span class="scan-type-name">Full</span>
+                                                        <span class="scan-type-desc">Comprehensive deep scan</span>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <hr class="my-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="xssScanner" checked>
-                                        <label class="form-check-label" for="xssScanner">XSS Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="sqliScanner" checked>
-                                        <label class="form-check-label" for="sqliScanner">SQL Injection Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="ssrfScanner" checked>
-                                        <label class="form-check-label" for="ssrfScanner">SSRF Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="csrfScanner" checked>
-                                        <label class="form-check-label" for="csrfScanner">CSRF Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="sstiScanner" checked>
-                                        <label class="form-check-label" for="sstiScanner">SSTI Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="cmdInjectionScanner" checked>
-                                        <label class="form-check-label" for="cmdInjectionScanner">Command Injection Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="pathTraversalScanner" checked>
-                                        <label class="form-check-label" for="pathTraversalScanner">Path Traversal Scanner</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input scanner-checkbox" type="checkbox" id="xxeScanner" checked>
-                                        <label class="form-check-label" for="xxeScanner">XXE Scanner</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold mb-2">
+                                        <i class="bi bi-shield-check me-1"></i>Select Scanners
+                                    </label>
+                                    <div class="scanner-checkboxes">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="allScanners" checked>
+                                            <label class="form-check-label fw-bold" for="allScanners">All Scanners</label>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="xssScanner" checked>
+                                            <label class="form-check-label" for="xssScanner">XSS Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="sqliScanner" checked>
+                                            <label class="form-check-label" for="sqliScanner">SQL Injection Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="ssrfScanner" checked>
+                                            <label class="form-check-label" for="ssrfScanner">SSRF Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="csrfScanner" checked>
+                                            <label class="form-check-label" for="csrfScanner">CSRF Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="sstiScanner" checked>
+                                            <label class="form-check-label" for="sstiScanner">SSTI Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="cmdInjectionScanner" checked>
+                                            <label class="form-check-label" for="cmdInjectionScanner">Command Injection Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="pathTraversalScanner" checked>
+                                            <label class="form-check-label" for="pathTraversalScanner">Path Traversal Scanner</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input scanner-checkbox" type="checkbox" id="xxeScanner" checked>
+                                            <label class="form-check-label" for="xxeScanner">XXE Scanner</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

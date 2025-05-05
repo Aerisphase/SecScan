@@ -14,12 +14,7 @@ from urllib.parse import urlparse, urljoin
 class EnhancedHttpClient:
     """
     Enhanced HTTP client with WAF evasion techniques and session management.
-    Features:
-    - Request throttling and randomization
-    - Rotating user agents and request patterns
-    - Advanced WAF evasion techniques
-    - Cookie jar support for session management
-    - Automatic CSRF token handling
+    
     """
     
     # Common user agents for rotation
@@ -74,19 +69,6 @@ class EnhancedHttpClient:
         """
         Initialize the enhanced HTTP client.
         
-        Args:
-            verify_ssl: Whether to verify SSL certificates
-            timeout: Request timeout in seconds
-            max_retries: Maximum number of retries for failed requests
-            rate_limit_min: Minimum delay between requests
-            rate_limit_max: Maximum delay between requests
-            proxy: Proxy server(s) to use
-            auth: Authentication credentials
-            rotate_user_agent: Whether to rotate user agents
-            rotate_request_pattern: Whether to rotate request patterns
-            waf_evasion: Whether to use WAF evasion techniques
-            handle_csrf: Whether to automatically handle CSRF tokens
-            maintain_session: Whether to maintain session cookies
         """
         # Suppress SSL warnings if verify_ssl is False
         if not verify_ssl:
