@@ -184,12 +184,12 @@ python src/core/scanner.py --url https://example.com --max-pages 20 --js-enabled
 3. Используйте режим обхода WAF: `--waf-bypass`
 4. Попробуйте использовать другой user agent
 
-   # Улучшенная обучалка
+### Улучшенная обучалка
 python src/ai/training/enhanced_train.py
 
-# Скипнуть стадии
+### Скипнуть стадии
 python src/ai/training/enhanced_train.py --skip-collection
 python src/ai/training/enhanced_train.py --skip-preprocessing
 
-# Для кастомных датафайлов
+### Для кастомных датафайлов
 python src/ai/training/enhanced_train.py --data-file path/to/data.json
