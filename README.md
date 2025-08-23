@@ -138,7 +138,7 @@ python -m playwright install chromium
 python src/server/server.py
 ```
 
-Веб-интерфейс будет доступен по адресу http://localhost:8000
+Веб-интерфейс будет доступен по адресу https://localhost:8001/static/index.html
 
 #### Использование командной строки
 
